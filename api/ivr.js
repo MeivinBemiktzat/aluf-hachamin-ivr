@@ -112,8 +112,8 @@ async function handle(req,res){
      const waiting=nextHuman(g);
      if(waiting&&waiting.id!==pl.id)return pause('ממתינים להצעה הסודית של '+waiting.name);
      if(!Object.prototype.hasOwnProperty.call(g.bids,pl.id)){
-      f.step='bid';await saveGame(g);
-      return prompt('המצרך במכרז: '+g.marketIngredients[g.ingredientIndex]+'. הקישו סכום הצעה בזוזים. ההצעה נשמרת בסתר',{max:2,min:1,timeout:25});
+      f.step='bid_menu';await saveGame(g);
+      return prompt('המכרז על '+g.marketIngredients[g.ingredientIndex]+'. להגשת הצעה הקישו אחת. להפעלת קלף חבר\'ה הקישו שתיים. למצב אישי הקישו שלוש',{allowed:'123'});
      }
      await saveGame(g);return pause('ההצעה שלכם נקלטה בסתר. ממתינים לשאר השחקנים');
     }
@@ -128,6 +128,24 @@ async function handle(req,res){
     }
     if(g.phase==='over'){f.step='menu';f.expect=null;return prompt('המשחק הסתיים. המנצח '+g.players.find(x=>x.id===g.winner).name);}
     return pause('ממתינים לעדכון המשחק');
+   }
+   if(f.step==='bid_menu'){
+    if(answer==='1'){f.step='bid';return prompt('הקישו את סכום ההצעה בזוזים. ההצעה נשמרת בסתר',{max:2,min:1,timeout:25});}
+    if(answer==='2'){
+     const g=await loadGame(f.code),pl=playerOf(g,f);if(!g||!pl)return prompt('המשחק אינו זמין');
+     if(!pl.friends.length)return prompt('אין בידכם קלפי חבר\'ה. להגשת הצעה הקישו אחת',{allowed:'1'});
+     f.step='friend_select';const options=pl.friends.map((id,i)=>{const c=game.data.friendCards.find(x=>x.id===id);return (i+1)+' '+(c?c.name:'קלף לא ידוע');}).join('. ');
+     return prompt('קלפי החבר\'ה שלכם: '+options+'. הקישו את מספר הקלף להפעלה',{allowed:pl.friends.map((_,i)=>String(i+1)).join('')});
+    }
+    if(answer==='3'){const g=await loadGame(f.code),pl=playerOf(g,f);return prompt(playerStatus(pl)+' להגשת הצעה הקישו אחת',{allowed:'1'});}
+    return prompt('להצעה הקישו אחת. לקלף חבר\'ה הקישו שתיים. למצב אישי הקישו שלוש',{allowed:'123'});
+   }
+   if(f.step==='friend_select'){
+    const g=await loadGame(f.code),pl=playerOf(g,f);if(!g||!pl)return prompt('המשחק אינו זמין');
+    const index=Number(answer)-1;
+    if(!Number.isInteger(index)||index<0||index>=pl.friends.length)return prompt('בחירת קלף לא תקינה');
+    try{const card=game.activateFriend(g,pl.id,index);await saveGame(g);f.step='game';return prompt('הפעלתם את קלף '+card.name+'. '+(g.phase==='bidding'?'להגשת הצעה הקישו אחת':'הקלף הופעל'),{allowed:'1'});}
+    catch(e){f.step='bid_menu';return prompt('לא ניתן להפעיל את הקלף כעת: '+e.message+'. להגשת הצעה הקישו אחת',{allowed:'1'});}
    }
    if(f.step==='bid'){
     const g=await loadGame(f.code),pl=playerOf(g,f);if(!g||!pl){f.step='menu';return prompt('המשחק אינו זמין');}
