@@ -40,7 +40,7 @@ async function handle(req,res){
   if(!callId)return response(res,'id_list_message=t-מזהה שיחה חסר');
   await hf.runWithContext(async()=>{
    let f=await loadFlow(callId);
-   if(f.step==='menu'&&!f.expect&&p.ApiPhone){const ref=await load(phoneKey(p.ApiPhone));if(ref){const oldGame=await loadGame(ref.code);if(oldGame&&oldGame.started&&!oldGame.over&&playerOf(oldGame,{playerId:ref.playerId})){f={step:'game',seq:f.seq||0,code:ref.code,playerId:ref.playerId};}}}
+   if(f.step==='menu'&&!f.expect&&p.ApiPhone){const ref=await load(phoneKey(p.ApiPhone));if(ref){const oldGame=await loadGame(ref.code);if(oldGame&&!oldGame.over&&playerOf(oldGame,{playerId:ref.playerId})){f={step:oldGame.started?'game':'lobby',seq:f.seq||0,code:ref.code,playerId:ref.playerId};}}}
    const answer=getInput(p,f);
    const send=async(body)=>{await saveFlow(callId,f);response(res,body);};
    const prompt=(text,o)=>send(read(f,text,o));
