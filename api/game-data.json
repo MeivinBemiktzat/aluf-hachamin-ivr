@@ -192,7 +192,7 @@
     {
       "id": "grandma",
       "name": "סבתא",
-      "description": "קבלו שני זוזים מהקופה",
+      "description": "קבלו שני קלפי כסף אקראיים מהקופה",
       "effect": "coins",
       "value": 2
     },
@@ -227,7 +227,7 @@
     {
       "id": "helper",
       "name": "העוזר",
-      "description": "קבלו זוז אחד",
+      "description": "קבלו קלף כסף אקראי אחד מהקופה",
       "effect": "coins",
       "value": 1
     },
@@ -271,13 +271,6 @@
       "name": "הדוד",
       "description": "קבלו שני קלפי כסף אקראיים",
       "effect": "take_two_money",
-      "value": 0
-    },
-    {
-      "id": "prophet",
-      "name": "הנביא",
-      "description": "בטלו את הצעתכם והחזירו את קלפי הכסף ליד",
-      "effect": "take_back_bid",
       "value": 0
     },
     {
