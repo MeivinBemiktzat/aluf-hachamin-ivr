@@ -157,7 +157,7 @@ async function handle(req,res){
     const g=await loadGame(f.code),pl=playerOf(g,f);if(!g||!pl)return prompt('המשחק אינו זמין');
     const index=Number(answer)-1;
     if(!Number.isInteger(index)||index<0||index>=pl.friends.length)return prompt('בחירת קלף לא תקינה');
-    try{const card=game.activateFriend(g,pl.id,index);await saveGame(g);f.step='game';return prompt('הפעלתם את קלף '+card.name+'. '+(g.phase==='bidding'?'להגשת הצעה הקישו אחת':'הקלף הופעל'),{allowed:'1'});}
+    try{const card=game.activateFriend(g,pl.id,index);await saveGame(g);f.step='game';return prompt('הפעלתם את קלף '+card.name+'. '+(card.effect==='peek'&&pl.peekedIngredient?'המצרך הבא הוא '+pl.peekedIngredient+'. ':'')+(g.phase==='bidding'?'להגשת הצעה הקישו אחת':'הקלף הופעל'),{allowed:'1'});}
     catch(e){f.step='bid_menu';return prompt('לא ניתן להפעיל את הקלף כעת: '+e.message+'. להגשת הצעה הקישו אחת',{allowed:'1'});}
    }
    if(f.step==='bid'){
