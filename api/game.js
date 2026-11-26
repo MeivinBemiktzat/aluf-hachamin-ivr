@@ -206,7 +206,8 @@ function sellIngredient(p,index,g,enhanced=false){
  if(!Number.isInteger(index)||!p.ingredients[index])throw Error('מצרך לא נמצא');
  p.ingredients.splice(index,1);giveMoney(p,enhanced?4:2);return enhanced?4:2;
 }
+function needsIngredient(p,name){return !!(p&&p.recipe&&p.recipe.ingredients.includes(name)&&!p.ingredients.includes(name));}
 function recipeProgress(p){return p.recipe?p.recipe.ingredients.filter(x=>p.ingredients.includes(x)).length:0;}
 function autoMoneyIfEmpty(g){for(const p of g.players)if(!p.coins.length)giveMoney(p,g.marketIngredients.length);}
 function nextTurn(g){if(g.over)return null;g.turn=(g.turn+1)%g.players.length;g.round++;beginTurn(g);return currentPlayer(g);}
-module.exports={data,newPlayer,newGame,startGame,beginTurn,openMarket,currentPlayer,coinTotal,submitSecretBid,revealAuction,resolveTie,activateFriend,drawFriend,buyFriend,sellIngredient,recipeProgress,addLog,moneyCard,giveMoney,findPayment,spendExact,nextTurn};
+module.exports={data,newPlayer,newGame,startGame,beginTurn,openMarket,currentPlayer,coinTotal,submitSecretBid,revealAuction,resolveTie,activateFriend,drawFriend,buyFriend,sellIngredient,recipeProgress,needsIngredient,addLog,moneyCard,giveMoney,findPayment,spendExact,nextTurn};
