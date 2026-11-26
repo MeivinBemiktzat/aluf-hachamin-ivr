@@ -110,30 +110,36 @@ function submitSecretBid(g,playerId,amount){
  addLog(g,p.isBot?'הבוט הגיש הצעה':'הוגשה הצעה חסויה');
  return Object.keys(g.bids).length===g.players.length;
 }
+function settleIngredient(g,winnerId,high,tie){
+ const ingredient=g.marketIngredients[g.ingredientIndex];
+ const winner=g.players.find(p=>p.id===winnerId);
+ if(winner){winner.ingredients.push(ingredient);addLog(g,winner.name+' זכה במצרך');}
+ const result={winnerId:winner?winner.id:null,high,ingredient,tie};
+ g.ingredientIndex++;g.bids={};g.tieCandidates=[];g.tieChoice=null;g.tieHigh=null;g.tieIngredient=null;g.lowestWins=false;
+ if(g.ingredientIndex>=g.marketIngredients.length)finishMarket(g);else startAuction(g);
+ return result;
+}
 function revealAuction(g,tieWinnerId){
  if(g.phase!=='bidding'||Object.keys(g.bids).length!==g.players.length)throw Error('עדיין חסרות הצעות');
  const entries=g.players.map(p=>({id:p.id,amount:g.bids[p.id].amount}));
- const high=Math.max(...entries.map(x=>x.amount));
+ const high=g.lowestWins?Math.min(...entries.map(x=>x.amount)):Math.max(...entries.map(x=>x.amount));
  const candidates=entries.filter(x=>x.amount===high);
- // Every money card offered is discarded, even for non-winners.
+ // All committed money cards go to the discard/charity pile, including losing bids.
  for(const p of g.players){const bid=g.bids[p.id];g.discard.money.push(...bid.cards);}
- if(candidates.length>1){
-  g.tieCandidates=candidates.map(x=>x.id);
-  if(tieWinnerId&&g.tieCandidates.includes(tieWinnerId))g.tieChoice=tieWinnerId;
-  else if(g.tieCandidates.includes(currentPlayer(g).id))g.tieChoice=currentPlayer(g).id;
-  else g.tieChoice=g.tieCandidates[0];
- }else g.tieChoice=candidates[0].id;
- const winner=g.players.find(p=>p.id===g.tieChoice);
- if(high>0 && winner){
-  const ingredient=g.marketIngredients[g.ingredientIndex];
-  winner.ingredients.push(ingredient);
-  addLog(g,winner.name+' זכה במצרך');
+ if(candidates.length>1&&!tieWinnerId){
+  g.tieCandidates=candidates.map(x=>x.id);g.tieHigh=high;g.tieIngredient=g.marketIngredients[g.ingredientIndex];g.phase='tie';
+  addLog(g,'יש תיקו במכרז. ממתינים להכרעת השחקן שתורו');
+  return {tie:true,pending:true,high,ingredient:g.tieIngredient,candidates:g.tieCandidates};
  }
- const won={winnerId:high>0?g.tieChoice:null,high,ingredient:g.marketIngredients[g.ingredientIndex],tie:candidates.length>1};
- g.ingredientIndex++;g.bids={};g.tieCandidates=[];g.tieChoice=null;
- if(g.ingredientIndex>=g.marketIngredients.length)finishMarket(g);
- else startAuction(g);
- return won;
+ let winnerId;
+ if(tieWinnerId&&candidates.some(x=>x.id===tieWinnerId))winnerId=tieWinnerId;
+ else if(candidates.length>1&&candidates.some(x=>x.id===currentPlayer(g).id))winnerId=currentPlayer(g).id;
+ else winnerId=candidates[0].id;
+ return settleIngredient(g,winnerId,high,candidates.length>1);
+}
+function resolveTie(g,winnerId){
+ if(g.phase!=='tie'||!g.tieCandidates.includes(winnerId))throw Error('בחירת שובר שוויון לא תקינה');
+ return settleIngredient(g,winnerId,g.tieHigh,true);
 }
 function finishMarket(g){
  const winner=g.players.find(p=>p.recipe.ingredients.every(i=>p.ingredients.includes(i)));
@@ -189,4 +195,4 @@ function sellIngredient(p,index,g,enhanced=false){
 function recipeProgress(p){return p.recipe?p.recipe.ingredients.filter(x=>p.ingredients.includes(x)).length:0;}
 function autoMoneyIfEmpty(g){for(const p of g.players)if(!p.coins.length)giveMoney(p,g.marketIngredients.length);}
 function nextTurn(g){if(g.over)return null;g.turn=(g.turn+1)%g.players.length;g.round++;beginTurn(g);return currentPlayer(g);}
-module.exports={data,newPlayer,newGame,startGame,beginTurn,openMarket,currentPlayer,coinTotal,submitSecretBid,revealAuction,activateFriend,drawFriend,sellIngredient,recipeProgress,addLog,moneyCard,giveMoney,findPayment,spendExact,nextTurn};
+module.exports={data,newPlayer,newGame,startGame,beginTurn,openMarket,currentPlayer,coinTotal,submitSecretBid,revealAuction,resolveTie,activateFriend,drawFriend,sellIngredient,recipeProgress,addLog,moneyCard,giveMoney,findPayment,spendExact,nextTurn};
