@@ -104,6 +104,7 @@ async function handle(req,res){
      return prompt('ההכרעה נקלטה. '+g.players.find(x=>x.id===winnerId).name+' זכה במצרך. הקישו אחת להמשך',{allowed:'1'});
     }
     if(g.phase==='bidding'){
+     if(answer==='5'){try{const card=game.buyFriend(g,pl.id);await saveGame(g);return prompt('רכשתם קלף חבר\'ה: '+card.name+'. להפעלת קלף הקישו ארבע. להמשך הקישו אחת',{allowed:'14'});}catch(e){return prompt(e.message+'. להמשך הקישו אחת',{allowed:'1'});}}
      runBots(g);
      if(g.bidDeadline&&Date.now()>g.bidDeadline){for(const missing of g.players)if(!Object.prototype.hasOwnProperty.call(g.bids,missing.id))g.bids[missing.id]={amount:0,cards:[],submittedAt:Date.now(),auto:true};game.addLog(g,'הצעות חסרות הושלמו אוטומטית באפס זוזים');}
      if(Object.keys(g.bids).length===g.players.length){
@@ -123,6 +124,7 @@ async function handle(req,res){
      await saveGame(g);return pause('ההצעה שלכם נקלטה בסתר. ממתינים לשאר השחקנים');
     }
     if(g.phase==='turn'){
+     if(answer==='5'){try{const card=game.buyFriend(g,pl.id);await saveGame(g);return prompt('רכשתם קלף חבר\'ה: '+card.name+'. הקישו אחת להמשך',{allowed:'1'});}catch(e){return prompt(e.message+'. הקישו אחת להמשך',{allowed:'1'});}}
      if(answer==='4'&&pl.friends.length){f.returnStep='game';f.step='friend_select';return prompt('קלפי החבר\'ה שלכם: '+pl.friends.map((id,i)=>(i+1)+' '+(game.data.friendCards.find(c=>c.id===id)?.name||'קלף')).join('. ')+'. הקישו מספר קלף להפעלה',{allowed:pl.friends.map((_,i)=>String(i+1)).join('')});}
      if(g.turnDeadline&&Date.now()>g.turnDeadline){const skipped=g.players[g.turn];game.nextTurn(g);game.addLog(g,skipped.name+' לא פעל בזמן והתור עבר אוטומטית');await saveGame(g);return pause('התור הקודם דולג עקב חוסר פעילות. כעת תור '+g.players[g.turn].name);}
      if(g.players[g.turn].id!==pl.id)return pause('כעת תור '+g.players[g.turn].name+'. '+playerStatus(pl));
@@ -132,7 +134,7 @@ async function handle(req,res){
       game.openMarket(g);runBots(g);await saveGame(g);f.step='game';
       return prompt(marketSummary(g)+'. '+playerStatus(pl)+' הקישו אחת להמשך למכרז',{allowed:'1'});
      }
-     return prompt('לפתיחת קלף שוק הקישו אחת. למצב אישי הקישו שתיים. למכירת מצרך הקישו שלוש. להפעלת קלף חבר\'ה הקישו ארבע',{allowed:'123'});
+     return prompt('לפתיחת קלף שוק הקישו אחת. למצב אישי הקישו שתיים. למכירת מצרך הקישו שלוש. להפעלת קלף חבר\'ה הקישו ארבע. לרכישת קלף חבר\'ה הקישו חמש',{allowed:'123'});
     }
     if(g.phase==='over'){f.step='menu';f.expect=null;return prompt('המשחק הסתיים. המנצח '+g.players.find(x=>x.id===g.winner).name);}
     return pause('ממתינים לעדכון המשחק');
