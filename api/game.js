@@ -161,7 +161,7 @@ function activateFriend(g,playerId,cardIndex,targetId){
  switch(card.effect){
   case 'coins': giveMoney(p,card.value||1);break;
   case 'draw': drawFriend(g,p);break;
-  case 'peek': p.peekedIngredient=g.marketIngredients[g.ingredientIndex]||null;break;
+  case 'peek': p.peekedIngredient=g.marketIngredients[g.ingredientIndex+1]||null;break;
   case 'boost': if(bid)bid.amount+=card.value||1;else p.nextBidBonus=(p.nextBidBonus||0)+(card.value||1);break;
   case 'discount': if(bid)bid.amount=Math.max(0,bid.amount-(card.value||1));else p.nextBidDiscount=(p.nextBidDiscount||0)+(card.value||1);break;
   case 'protect': p.protections++;break;
