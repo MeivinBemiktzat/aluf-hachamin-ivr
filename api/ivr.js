@@ -63,7 +63,7 @@ async function handle(req,res){
      resumeGame.resumeReady=resumeGame.resumeReady||{};
      resumeGame.resumeReady[resumePlayer.id]={at:Date.now()};
      const humans=resumeGame.players.filter(x=>!x.isBot);
-     const ready=humans.filter(x=>resumeGame.resumeReady[x.id]).length;
+     const ready=humans.filter(x=>resumeGame.resumeReady[x.id]&&Date.now()-resumeGame.resumeReady[x.id].at<180000).length;
      await saveGame(resumeGame);
      log('game.resume_requested',{gameCode:resumeGame.code,playerId:resumePlayer.id,ready,required:humans.length});
      if(ready===humans.length){resumeGame.resumeReady={};resumeGame.lastResumedAt=Date.now();await saveGame(resumeGame);f.step='game';return prompt('כל השחקנים התחברו מחדש. ממשיכים מהנקודה שבה המשחק נעצר. '+playerStatus(resumePlayer)+'. '+(resumeGame.phase==='turn'?'כעת תור '+resumeGame.players[resumeGame.turn].name:'כעת מתנהל מכרז על '+(resumeGame.marketIngredients[resumeGame.ingredientIndex]||'המצרך הבא')),{allowed:'12345'});}
@@ -75,7 +75,7 @@ async function handle(req,res){
     const g=await loadGame(f.code),pl=playerOf(g,f);
     if(!g||!pl||g.over){f.step='menu';f.expect=null;return prompt('המשחק כבר הסתיים או אינו זמין. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});}
     const humans=g.players.filter(x=>!x.isBot);
-    const ready=humans.filter(x=>g.resumeReady&&g.resumeReady[x.id]).length;
+    const ready=humans.filter(x=>g.resumeReady&&g.resumeReady[x.id]&&Date.now()-g.resumeReady[x.id].at<180000).length;
     if(ready===humans.length){
      g.resumeReady={};g.lastResumedAt=Date.now();await saveGame(g);f.step='game';
      log('game.resume_completed',{gameCode:g.code,playerId:pl.id,players:humans.length,phase:g.phase,turn:g.turn});
