@@ -58,7 +58,7 @@ async function handle(req,res){
    if(f.step==='human_count'){
     const count=Number(answer);if(![2,3,4,5].includes(count))return prompt('מספר לא תקין. הקישו בין שתיים לחמש',{allowed:'2345'});
     const c=code(),g=game.newGame(c,count,'human'),pl=game.newPlayer(id(),'');
-    g.players.push(pl);await loadGame(c);await saveGame(g);f.code=c;f.playerId=pl.id;f.step='name';
+    g.players.push(pl);await loadGame(c);await loadGame(c);await saveGame(g);f.code=c;f.playerId=pl.id;f.step='name';
     return prompt('קוד המשחק שלכם '+c+'. הקלידו כעת את שמכם',{max:'',min:'',style:'HebrewKeyboard',timeout:30});
    }
    if(f.step==='bot_count'){
