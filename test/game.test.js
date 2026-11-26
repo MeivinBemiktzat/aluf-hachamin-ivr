@@ -1,28 +1,10 @@
 'use strict';
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const game = require('../api/game');
-
-test('recipes are assigned neutrally and contain 7 or 8 ingredients', () => {
-  const g = game.newGame('123', 2, 'bots');
-  g.players.push(game.newPlayer('a','א'), game.newPlayer('b','ב'));
-  game.startGame(g);
-  for (const p of g.players) assert.ok([7,8].includes(p.recipe.ingredients.length));
-});
-test('market bidding resolves only after every player submits', () => {
-  const g = game.newGame('123',2,'bots');
-  g.players.push(game.newPlayer('a','א'),game.newPlayer('b','ב'));
-  game.startGame(g);
-  game.openMarket(g);
-  const before = g.ingredientIndex;
-  const a = g.players[0], b = g.players[1];
-  game.submitBid(g,a.id,0);
-  assert.equal(g.ingredientIndex,before);
-  game.submitBid(g,b.id,1);
-  assert.equal(g.ingredientIndex,before+1);
-});
-test('random money cards are valued from one to four', () => {
-  const p = game.newPlayer('a','א');
-  game.addRandomMoney(p,100);
-  assert.ok(p.coins.every(n => n >= 1 && n <= 4));
-});
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const game=require('../api/game');
+test('neutral recipes and initial cards',()=>{const g=game.newGame('123',3,'human');for(let i=0;i<3;i++)g.players.push(game.newPlayer('p'+i,'P'+i));game.startGame(g);for(const p of g.players){assert.ok([7,8].includes(p.recipe.ingredients.length));assert.equal(p.coins.length,4);assert.equal(p.friends.length,1);}});
+test('bids are hidden until every player submits',()=>{const g=game.newGame('123',2,'human');g.players.push(game.newPlayer('a','A'),game.newPlayer('b','B'));game.startGame(g);game.openMarket(g);const before=g.ingredientIndex;game.submitSecretBid(g,'a',3);assert.equal(g.ingredientIndex,before);assert.equal(Object.keys(g.bids).length,1);game.submitSecretBid(g,'b',4);assert.equal(g.ingredientIndex,before+1);});
+test('exact money card combinations required',()=>{const p=game.newPlayer('x','X');p.coins=[2,4];assert.throws(()=>game.spendExact(p,3));assert.deepEqual(game.spendExact(p,6),[2,4]);});
+test('zero wallet assistance grants one random money card per market ingredient',()=>{const g=game.newGame('123',2,'human');g.players.push(game.newPlayer('a','A'),game.newPlayer('b','B'));game.startGame(g);g.players.forEach(p=>p.coins=[]);game.openMarket(g);for(const p of g.players){assert.equal(p.coins.length,g.marketIngredients.length);assert.ok(p.coins.every(x=>x>=1&&x<=4));}});
+test('friend effect is consumed and applied',()=>{const g=game.newGame('123',2,'human');g.players.push(game.newPlayer('a','A'),game.newPlayer('b','B'));game.startGame(g);const p=g.players[0];p.friends=['grandma'];const before=game.coinTotal(p);game.activateFriend(g,p.id,0);assert.equal(game.coinTotal(p),before+2);assert.equal(p.friends.length,0);});
+test('bidding completion detects a player who already completed recipe',()=>{const g=game.newGame('123',2,'human');g.players.push(game.newPlayer('a','A'),game.newPlayer('b','B'));game.startGame(g);const p=g.players[0];p.ingredients=[...p.recipe.ingredients];g.marketIngredients=['x'];g.phase='bidding';g.bids={a:{amount:0,cards:[]},b:{amount:0,cards:[]}};game.revealAuction(g);assert.equal(g.over,true);assert.equal(g.winner,p.id);});
