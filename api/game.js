@@ -10,7 +10,7 @@ const moneyCard = () => 1 + rand(4);
 const cardById = id => data.friendCards.find(c=>c.id===id);
 
 function newPlayer(id,name,isBot=false){
- return {id,name,isBot,recipe:null,ingredients:[],coins:[],friends:[],protections:0,disconnectedAt:null,joinedAt:Date.now(),lastSeenLog:0};
+ return {id,name,isBot,recipe:null,ingredients:[],coins:[],friends:[],protections:0,nextBidBonus:0,nextBidDiscount:0,disconnectedAt:null,joinedAt:Date.now(),lastSeenLog:0};
 }
 function newGame(code,maxPlayers,mode){
  return {version:2,code,createdAt:Date.now(),mode,maxPlayers,started:false,over:false,players:[],turn:0,round:0,marketCard:null,marketIngredients:[],ingredientIndex:0,phase:'lobby',bids:{},bidOrder:[],tieCandidates:[],tieChoice:null,turnDeadline:0,log:[],winner:null,discard:{money:[],friends:[],market:[],ingredients:[]},deck:{market:[],friends:[],ingredients:[]},pendingEffects:[]};
@@ -106,7 +106,8 @@ function submitSecretBid(g,playerId,amount){
  if(Object.prototype.hasOwnProperty.call(g.bids,playerId))throw Error('כבר הוגשה הצעה');
  if(!Number.isInteger(amount)||amount<0||amount>coinTotal(p))throw Error('הצעה לא תקינה');
  const cards=spendExact(p,amount);
- g.bids[playerId]={amount,cards,submittedAt:Date.now()};
+ const finalAmount=Math.max(0,amount+(p.nextBidBonus||0)-(p.nextBidDiscount||0));p.nextBidBonus=0;p.nextBidDiscount=0;
+ g.bids[playerId]={amount:finalAmount,cards,submittedAt:Date.now()};
  addLog(g,p.isBot?'הבוט הגיש הצעה':'הוגשה הצעה חסויה');
  return Object.keys(g.bids).length===g.players.length;
 }
@@ -161,8 +162,8 @@ function activateFriend(g,playerId,cardIndex,targetId){
   case 'coins': giveMoney(p,card.value||1);break;
   case 'draw': drawFriend(g,p);break;
   case 'peek': p.peekedIngredient=g.marketIngredients[g.ingredientIndex]||null;break;
-  case 'boost': if(!bid)throw Error('יש להפעיל לאחר הגשת הצעה');bid.amount+=card.value||1;break;
-  case 'discount': if(!bid)throw Error('יש להפעיל לאחר הגשת הצעה');bid.amount=Math.max(0,bid.amount-(card.value||1));break;
+  case 'boost': if(bid)bid.amount+=card.value||1;else p.nextBidBonus=(p.nextBidBonus||0)+(card.value||1);break;
+  case 'discount': if(bid)bid.amount=Math.max(0,bid.amount-(card.value||1));else p.nextBidDiscount=(p.nextBidDiscount||0)+(card.value||1);break;
   case 'protect': p.protections++;break;
   case 'replace': if(p.friends.length){p.friends.splice(rand(p.friends.length),1);drawFriend(g,p);}break;
   case 'take_money': if(!target||!target.coins.length)throw Error('אין לשחקן היעד כסף לקחת');p.coins.push(target.coins.splice(rand(target.coins.length),1)[0]);break;
