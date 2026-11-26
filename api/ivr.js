@@ -1,128 +1,135 @@
 'use strict';
-const hf = require('./hf-storage');
-const engine = require('./game');
-const crypto = require('node:crypto');
+const hf=require('./hf-storage');
+const game=require('./game');
+const bot=require('./bot');
+const crypto=require('node:crypto');
 
-const PREFIX = 'aluf:';
-const TTL = 60 * 60 * 8;
-const WAIT_SECONDS = 5;
-const HOLD = process.env.YEMOT_HOLD_MUSIC || '';
-
-const clean = s => String(s || '').replace(/[.\-]/g, ' ').slice(0, 180);
-const say = s => 't-' + clean(s);
-const join = xs => xs.filter(Boolean).join('.');
-const readParams = (name, {max=1,min=1,timeout=15,style='Number',allowed='',onEmpty=''}={}) =>
-  [name,'',max,min,timeout,style,'no','no','',allowed,1,onEmpty,'','','no'].join(',');
-const nextName = flow => 'P' + (++flow.seq);
-const response = (message, name, opts={}) => `read=${join([say(message)])}=${readParams(name,opts)}`;
-const waitResponse = name => `read=${join([HOLD ? 'f-'+HOLD : say('ממתינים לשחקנים')])}=${readParams(name,{timeout:WAIT_SECONDS,style:'NO',max:'',min:'',onEmpty:'Ok'})}`;
-async function get(k) { return hf.get(PREFIX+k); }
-async function set(k,v,ttl=TTL) { await hf.get(PREFIX+k); return hf.set(PREFIX+k,v,ttl); }
-async function loadGame(code) { const v=await get('game:'+code); return v ? JSON.parse(v) : null; }
-async function saveGame(g) { await set('game:'+g.code,JSON.stringify(g)); }
-async function loadFlow(callId) { const v=await get('flow:'+callId); return v ? JSON.parse(v) : {step:'menu',seq:0}; }
-async function saveFlow(callId,f) { await set('flow:'+callId,JSON.stringify(f),60*60*4); }
-function input(params, name) { return params[name] === undefined ? null : String(params[name]); }
-function code3() { return String(100+crypto.randomInt(900)); }
-function makeId() { return crypto.randomBytes(5).toString('hex'); }
-
-async function handler(req,res) {
-  res.setHeader('Content-Type','text/plain; charset=utf-8');
-  try {
-    const p={...(req.query||{}),...(req.body||{})};
-    if (p.hangup==='yes') return res.status(200).send('ok');
-    const callId=String(p.ApiCallId||p.callId||'unknown');
-    await hf.runWithContext(async()=>{
-      let f=await loadFlow(callId);
-      const reply=(text,opts={})=>{ const n=nextName(f); return saveFlow(callId,f).then(()=>res.status(200).send(response(text,n,opts))); };
-      const wait=(text='')=>{ const n=nextName(f); return saveFlow(callId,f).then(()=>res.status(200).send(waitResponse(n))); };
-      const answer=input(p,f.expect);
-      if (!f.step || f.step==='menu') {
-        f={step:'menu',seq:f.seq||0};
-        const n=nextName(f); f.expect=n;
-        await saveFlow(callId,f);
-        return res.status(200).send(response('ברוכים הבאים לאלוף החמין. למשחק חדש הקישו אחת. לכניסה למשחק קיים הקישו שתיים',n,{allowed:'12'}));
-      }
-      if (f.step==='menu_answer') {}
-      if (f.step==='menu') {
-        // First menu response is identified by the stored expected parameter.
-        if (answer==='1') { f.step='mode'; return reply('למשחק מול שחקנים אמיתיים הקישו אחת. למשחק מול בוטים הקישו שתיים',{allowed:'12'}); }
-        if (answer==='2') { f.step='join_code'; return reply('הקישו את קוד המשחק בן שלוש הספרות'); }
-        f.step='menu'; return reply('בחירה לא תקינה. להתחלת משחק הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});
-      }
-      if (f.step==='mode') {
-        if (answer==='1') { f.mode='human'; f.step='human_count'; return reply('כמה שחקנים ישתתפו במשחק כוללכם? הקישו מספר בין שתיים לחמש',{allowed:'2345'}); }
-        if (answer==='2') { f.mode='bots'; f.step='bot_count'; return reply('כמה בוטים ישחקו מולכם? הקישו מספר בין אחת לארבע',{allowed:'1234'}); }
-        return reply('בחירה לא תקינה. הקישו אחת או שתיים',{allowed:'12'});
-      }
-      if (f.step==='human_count') {
-        const count=Number(answer);
-        if (![2,3,4,5].includes(count)) return reply('מספר שחקנים לא תקין. הקישו מספר בין שתיים לחמש',{allowed:'2345'});
-        const code=code3(); const g=engine.newGame(code,count,'human');
-        const player=engine.newPlayer(makeId(),''); g.players.push(player); f.gameCode=code; f.playerId=player.id; f.step='name'; f.nameNext='creator';
-        await saveGame(g); return reply('נוצר משחק. קוד המשחק שלכם הוא '+code+'. כעת הקלידו את שמכם',{max:'',min:'',style:'HebrewKeyboard',timeout:30});
-      }
-      if (f.step==='bot_count') {
-        const count=Number(answer);
-        if (![1,2,3,4].includes(count)) return reply('מספר בוטים לא תקין. הקישו מספר בין אחת לארבע',{allowed:'1234'});
-        const g=engine.newGame('B'+makeId().slice(0,7),count+1,'bots');
-        const player=engine.newPlayer(makeId(),''); g.players.push(player);
-        for(let i=0;i<count;i++) g.players.push(engine.newPlayer('bot'+i,['אופה','קצב','סבתא','שף'][i%4],true));
-        f.gameCode=g.code; f.playerId=player.id; f.step='name';
-        await saveGame(g); return reply('הקלידו את שמכם',{max:'',min:'',style:'HebrewKeyboard',timeout:30});
-      }
-      if (f.step==='join_code') {
-        const code=String(answer||'').replace(/\D/g,'');
-        const g=await loadGame(code);
-        if (!g || g.started || g.mode!=='human') { f.step='menu'; return reply('לא נמצא משחק פתוח עם הקוד הזה. חזרו לתפריט הראשי'); }
-        if (g.players.length>=g.maxPlayers) { f.step='menu'; return reply('המשחק מלא'); }
-        f.gameCode=code; f.playerId=makeId(); f.step='name';
-        return reply('הקלידו את שמכם',{max:'',min:'',style:'HebrewKeyboard',timeout:30});
-      }
-      if (f.step==='name') {
-        const name=String(answer||'').trim().slice(0,24);
-        if (!name) return reply('לא התקבל שם. הקלידו את שמכם',{max:'',min:'',style:'HebrewKeyboard',timeout:30});
-        const g=await loadGame(f.gameCode);
-        if (!g) { f.step='menu'; return reply('המשחק לא נמצא. חזרו לתפריט הראשי'); }
-        let player=g.players.find(x=>x.id===f.playerId);
-        if (!player) { player=engine.newPlayer(f.playerId,name); g.players.push(player); }
-        player.name=name;
-        await saveGame(g);
-        f.step='lobby';
-        if (g.mode==='bots') { engine.startGame(g); await saveGame(g); f.step='turn_menu'; return reply('המשחק מול הבוטים מתחיל. '+player.name+', זה תורך. לפתיחת קלף שוק הקישו אחת. למצב אישי הקישו שתיים',{allowed:'12'}); }
-        return wait('נרשמתם למשחק. ממתינים לשאר השחקנים');
-      }
-      if (f.step==='lobby') {
-        const g=await loadGame(f.gameCode);
-        if (!g) { f.step='menu'; return reply('המשחק לא נמצא'); }
-        if (!g.started && g.players.length===g.maxPlayers) { engine.startGame(g); await saveGame(g); f.step='turn_menu'; return reply('כל השחקנים הצטרפו. המשחק מתחיל. לפתיחת קלף שוק הקישו אחת',{allowed:'1'}); }
-        return wait();
-      }
-      if (f.step==='turn_menu') {
-        const g=await loadGame(f.gameCode); if(!g) {f.step='menu';return reply('המשחק הסתיים או לא נמצא');}
-        const player=g.players.find(x=>x.id===f.playerId);
-        if (g.over) {f.step='menu';return reply('המשחק הסתיים. המנצח הוא '+(g.players.find(x=>x.id===g.winner)?.name||'לא ידוע'));}
-        if (answer==='2') return reply('המתכון שלכם הוא '+player.recipe.name+'. אספתם '+engine.recipeProgress(player)+' מתוך '+player.recipe.ingredients.length+' מצרכים. יש לכם '+engine.coinTotal(player)+' זוזים. להמשך הקישו אחת',{allowed:'1'});
-        if (answer==='1' && g.players[g.turn].id===player.id) {
-          engine.openMarket(g); await saveGame(g); f.step='bid';
-          return reply('קלף השוק: '+g.marketCard.name+'. '+g.marketCard.description+'. נפתחו המצרכים: '+g.marketIngredients.join(', ')+'. מתחיל המכרז. הקישו סכום הצעה בזוזים עבור '+g.marketIngredients[0],{max:2,min:1,timeout:20});
-        }
-        return reply('עדיין לא תורך או בחירה לא תקינה. הקישו אחת לפתיחת קלף שוק או שתיים למצב אישי',{allowed:'12'});
-      }
-      if (f.step==='bid') {
-        const g=await loadGame(f.gameCode); const player=g&&g.players.find(x=>x.id===f.playerId);
-        if(!g||!player) {f.step='menu';return reply('המשחק לא נמצא');}
-        const amount=Number(answer);
-        try { engine.submitBid(g,player.id,amount); } catch(e) { return reply('הצעה לא תקינה או שאין מספיק זוזים. הקישו הצעה מחדש',{max:2,min:1,timeout:20}); }
-        await saveGame(g);
-        f.step='turn_menu';
-        return reply('ההצעה נקלטה. '+(g.over?'המשחק הסתיים. המנצח הוא '+player.name:'המכרז הסתיים או ממתין להצעות. למצב אישי הקישו שתיים. להמשך הקישו אחת'),{allowed:'12'});
-      }
-      f.step='menu'; return reply('חזרתם לתפריט הראשי. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});
-    });
-  } catch(e) {
-    console.error(JSON.stringify({service:'aluf-hachamin-ivr',event:'request_error',message:String(e.message||e).slice(0,180)}));
-    if(!res.headersSent) res.status(200).send('id_list_message=t-אירעה שגיאה. נסו שוב מאוחר יותר');
-  }
+const PREFIX='aluf:';
+const TTL=8*60*60;
+const WAIT=5;
+const HOLD=process.env.YEMOT_HOLD_MUSIC||'';
+const clean=s=>String(s||'').replace(/[.\-]/g,' ').slice(0,180);
+const say=s=>'t-'+clean(s);
+const readParams=(name,o={})=>[name,'',o.max??1,o.min??1,o.timeout??15,o.style||'Number','no','no','',o.allowed||'',1,o.onEmpty||'','','','no'].join(',');
+const next=(f)=>'P'+(++f.seq);
+const read=(f,text,o={})=>{const n=next(f);f.expect=n;return `read=${say(text)}=${readParams(n,o)}`;};
+const wait=(f,text='ממתינים לעדכון המשחק')=>{const n=next(f);f.expect=n;return `read=${HOLD?'f-'+HOLD:say(text)}=${readParams(n,{max:'',min:'',timeout:WAIT,style:'NO',onEmpty:'Ok'})}`;};
+const id=()=>crypto.randomBytes(8).toString('hex');
+const code=()=>String(100+crypto.randomInt(900));
+const key=(type,value)=>PREFIX+type+':'+value;
+async function load(k){const x=await hf.get(k);return x?JSON.parse(x):null;}
+async function save(k,v,ttl=TTL){await hf.set(k,JSON.stringify(v),ttl);}
+const gameKey=c=>key('game',c),flowKey=c=>key('flow',c);
+async function loadGame(c){return load(gameKey(c));}
+async function saveGame(g){return save(gameKey(g.code),g);}
+async function loadFlow(c){return await load(flowKey(c))||{step:'menu',seq:0};}
+async function saveFlow(c,f){return save(flowKey(c),f,4*60*60);}
+function getInput(p,f){return p[f.expect]===undefined?'':String(p[f.expect]);}
+function response(res,body){res.status(200).setHeader('Content-Type','text/plain; charset=utf-8');res.send(body);}
+function playerOf(g,f){return g&&g.players.find(p=>p.id===f.playerId);}
+function nextHuman(g){return g.players.find(p=>!p.isBot&&!Object.prototype.hasOwnProperty.call(g.bids,p.id));}
+function runBots(g){for(const p of g.players.filter(x=>x.isBot))if(!Object.prototype.hasOwnProperty.call(g.bids,p.id))bot.playBot(g,p);}
+function marketSummary(g){return 'קלף השוק '+g.marketCard.name+'. '+g.marketCard.description+'. המצרכים שנפתחו: '+g.marketIngredients.join(', ');}
+function playerStatus(p){return 'המתכון שלכם '+p.recipe.name+'. אספתם '+game.recipeProgress(p)+' מתוך '+p.recipe.ingredients.length+' מצרכים. יתרתכם '+game.coinTotal(p)+' זוזים. בידכם '+p.friends.length+' קלפי חבר\'ה.';}
+async function handle(req,res){
+ try{
+  const p={...(req.query||{}),...(req.body||{})};
+  const callId=String(p.ApiCallId||p.api_call_id||p.callId||'');
+  if(!callId)return response(res,'id_list_message=t-מזהה שיחה חסר');
+  await hf.runWithContext(async()=>{
+   let f=await loadFlow(callId);
+   const answer=getInput(p,f);
+   const send=async(body)=>{await saveFlow(callId,f);response(res,body);};
+   const prompt=(text,o)=>send(read(f,text,o));
+   const pause=(text)=>send(wait(f,text));
+   if(f.step==='menu'){
+    if(!f.expect||answer===''){
+     return prompt('ברוכים הבאים לאלוף החמין. למשחק חדש הקישו אחת. לכניסה למשחק קיים הקישו שתיים',{allowed:'12'});
+    }
+    if(answer==='1'){f.step='mode';return prompt('למשחק מול שחקנים אמיתיים הקישו אחת. למשחק מול בוטים הקישו שתיים',{allowed:'12'});}
+    if(answer==='2'){f.step='join_code';return prompt('הקישו את קוד המשחק בן שלוש הספרות',{min:3,max:3,style:'Digits'});}
+    f.expect=null;return prompt('בחירה לא תקינה. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});
+   }
+   if(f.step==='mode'){
+    if(answer==='1'){f.mode='human';f.step='human_count';return prompt('כמה שחקנים ישתתפו במשחק כוללכם? הקישו מספר בין שתיים לחמש',{allowed:'2345'});}
+    if(answer==='2'){f.mode='bots';f.step='bot_count';return prompt('כמה בוטים ישחקו מולכם? הקישו מספר בין אחת לארבע',{allowed:'1234'});}
+    return prompt('הקישו אחת למשחק אנושי או שתיים למשחק מול בוטים',{allowed:'12'});
+   }
+   if(f.step==='human_count'){
+    const count=Number(answer);if(![2,3,4,5].includes(count))return prompt('מספר לא תקין. הקישו בין שתיים לחמש',{allowed:'2345'});
+    const c=code(),g=game.newGame(c,count,'human'),pl=game.newPlayer(id(),'');
+    g.players.push(pl);await saveGame(g);f.code=c;f.playerId=pl.id;f.step='name';
+    return prompt('קוד המשחק שלכם '+c+'. הקלידו כעת את שמכם',{max:'',min:'',style:'HebrewKeyboard',timeout:30});
+   }
+   if(f.step==='bot_count'){
+    const count=Number(answer);if(![1,2,3,4].includes(count))return prompt('מספר בוטים לא תקין. הקישו בין אחת לארבע',{allowed:'1234'});
+    const c='B'+id().slice(0,7),g=game.newGame(c,count+1,'bots'),pl=game.newPlayer(id(),'');
+    g.players.push(pl);for(let i=0;i<count;i++)g.players.push(game.newPlayer('bot'+i,['האופה','הקצב','הסוחר','השף'][i],true));
+    await saveGame(g);f.code=c;f.playerId=pl.id;f.step='name';
+    return prompt('הקלידו את שמכם',{max:'',min:'',style:'HebrewKeyboard',timeout:30});
+   }
+   if(f.step==='join_code'){
+    const c=answer.replace(/\D/g,'');const g=await loadGame(c);
+    if(!g||g.started||g.mode!=='human') {f.step='menu';f.expect=null;return prompt('לא נמצא משחק פתוח עם הקוד הזה. חזרו לתפריט הראשי');}
+    if(g.players.length>=g.maxPlayers)return prompt('המשחק מלא. הקישו קוד אחר או חזרו לתפריט');
+    f.code=c;f.playerId=id();f.step='name';
+    return prompt('הקלידו את שמכם',{max:'',min:'',style:'HebrewKeyboard',timeout:30});
+   }
+   if(f.step==='name'){
+    const name=answer.trim().slice(0,24);if(!name)return prompt('לא התקבל שם. הקלידו את שמכם',{max:'',min:'',style:'HebrewKeyboard',timeout:30});
+    const g=await loadGame(f.code);if(!g)return prompt('המשחק אינו זמין. חזרו לתפריט הראשי');
+    let pl=playerOf(g,f);if(!pl){pl=game.newPlayer(f.playerId,name);g.players.push(pl);}pl.name=name;
+    if(g.mode==='bots'){game.startGame(g);await saveGame(g);f.step='game';return prompt('המשחק מתחיל. '+playerStatus(pl)+' לפתיחת קלף שוק הקישו אחת. למצב אישי הקישו שתיים',{allowed:'12'});}
+    await saveGame(g);f.step='lobby';return pause('נרשמתם למשחק. קוד המשחק '+g.code+'. ממתינים להצטרפות שאר השחקנים');
+   }
+   if(f.step==='lobby'){
+    const g=await loadGame(f.code);if(!g){f.step='menu';return prompt('המשחק לא נמצא. חזרו לתפריט');}
+    if(!g.started&&g.players.length===g.maxPlayers){game.startGame(g);await saveGame(g);f.step='game';return prompt('כל השחקנים הצטרפו והמשחק מתחיל. '+playerStatus(playerOf(g,f))+' הקישו אחת להמשך',{allowed:'1'});}
+    return pause('ממתינים לשחקנים. הצטרפו '+g.players.length+' מתוך '+g.maxPlayers);
+   }
+   if(f.step==='game'){
+    const g=await loadGame(f.code),pl=playerOf(g,f);if(!g||!pl){f.step='menu';return prompt('לא נמצא משחק פעיל');}
+    if(g.over){f.step='menu';f.expect=null;return prompt('המשחק הסתיים. המנצח הוא '+(g.players.find(x=>x.id===g.winner)?.name||'לא ידוע'));}
+    if(g.phase==='bidding'){
+     runBots(g);
+     if(Object.keys(g.bids).length===g.players.length){
+      const result=game.revealAuction(g);
+      if(g.over){await saveGame(g);return prompt('המשחק הסתיים. המנצח '+pl.name);}
+      await saveGame(g);
+      return prompt('המכרז הסתיים. '+(result.winnerId?'המצרך זכה על ידי '+g.players.find(x=>x.id===result.winnerId).name:'לא היה זוכה')+'. '+(g.phase==='bidding'?'המצרך הבא '+g.marketIngredients[g.ingredientIndex]+'.':'התור הבא')+'. הקישו אחת להמשך',{allowed:'1'});
+     }
+     const waiting=nextHuman(g);
+     if(waiting&&waiting.id!==pl.id)return pause('ממתינים להצעה הסודית של '+waiting.name);
+     if(!Object.prototype.hasOwnProperty.call(g.bids,pl.id)){
+      f.step='bid';await saveGame(g);
+      return prompt('המצרך במכרז: '+g.marketIngredients[g.ingredientIndex]+'. הקישו סכום הצעה בזוזים. ההצעה נשמרת בסתר',{max:2,min:1,timeout:25});
+     }
+     await saveGame(g);return pause('ההצעה שלכם נקלטה בסתר. ממתינים לשאר השחקנים');
+    }
+    if(g.phase==='turn'){
+     if(g.players[g.turn].id!==pl.id)return pause('כעת תור '+g.players[g.turn].name+'. '+playerStatus(pl));
+     if(answer==='2')return prompt(playerStatus(pl)+' הקישו אחת לחזרה',{allowed:'1'});
+     if(answer==='1'){
+      game.openMarket(g);runBots(g);await saveGame(g);f.step='game';
+      return prompt(marketSummary(g)+'. '+playerStatus(pl)+' הקישו אחת להמשך למכרז',{allowed:'1'});
+     }
+     return prompt('לפתיחת קלף שוק הקישו אחת. למצב אישי הקישו שתיים',{allowed:'12'});
+    }
+    if(g.phase==='over'){f.step='menu';f.expect=null;return prompt('המשחק הסתיים. המנצח '+g.players.find(x=>x.id===g.winner).name);}
+    return pause('ממתינים לעדכון המשחק');
+   }
+   if(f.step==='bid'){
+    const g=await loadGame(f.code),pl=playerOf(g,f);if(!g||!pl){f.step='menu';return prompt('המשחק אינו זמין');}
+    const amount=Number(answer);
+    try{game.submitSecretBid(g,pl.id,amount);}catch(e){return prompt('הצעה לא תקינה. יש להקיש סכום שניתן לשלם באמצעות קלפי הכסף שבידכם',{max:2,min:1,timeout:25});}
+    runBots(g);await saveGame(g);f.step='game';
+    return pause('ההצעה נקלטה ונשמרה בסתר. ממתינים לשאר השחקנים');
+   }
+   f.step='menu';f.expect=null;return prompt('חזרתם לתפריט הראשי. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});
+  });
+ }catch(e){
+  console.error(JSON.stringify({service:'aluf-hachamin-ivr',event:'error',message:String(e.message||e).slice(0,160)}));
+  if(!res.headersSent)response(res,'id_list_message=t-אירעה שגיאה. נסו שוב');
+ }
 }
-module.exports=handler;
+module.exports=handle;
