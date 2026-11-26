@@ -170,8 +170,8 @@ async function handle(req,res){
    f.step='menu';f.expect=null;return prompt('חזרתם לתפריט הראשי. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});
   });
  }catch(e){
-  console.error(JSON.stringify({service:'aluf-hachamin-ivr',event:'error',message:String(e.message||e).slice(0,160)}));
-  if(!res.headersSent)response(res,'id_list_message=t-אירעה שגיאה. נסו שוב');
+  console.error(JSON.stringify({service:'aluf-hachamin-ivr',event:'error',code:e.code||'UNKNOWN',message:String(e.message||e).slice(0,160)}));
+  if(!res.headersSent)response(res,e.code==='HF_CONFLICT'?'id_list_message=t-המשחק עודכן במקביל. אנא הקישו שוב':'id_list_message=t-אירעה שגיאה. נסו שוב');
  }
 }
 module.exports=handle;
