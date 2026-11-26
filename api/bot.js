@@ -12,7 +12,7 @@ function decideBid(g,p){
 }
 function chooseFriend(g,p){
  const cards=p.friends.map((id,index)=>({index,card:game.data.friendCards.find(c=>c.id===id)})).filter(x=>x.card);
- const rank=c=>c.effect==='coins'&&game.coinTotal(p)<5?9:c.effect==='draw'?5:c.effect==='protect'?4:0;
+ const rank=c=>c.effect==='coins'&&game.coinTotal(p)<5?9:c.effect==='boost'||c.effect==='discount'?8:c.effect==='draw'?5:c.effect==='lowest_wins'?6:c.effect==='take_two_money'&&game.coinTotal(p)<7?8:c.effect==='protect'?4:0;
  cards.sort((a,b)=>rank(b.card)-rank(a.card));
  return cards.length&&rank(cards[0].card)>=5?cards[0].index:-1;
 }
