@@ -120,7 +120,7 @@ async function handle(req,res){
      runBots(g);
      if(g.bidDeadline&&Date.now()>g.bidDeadline){for(const missing of g.players)if(!Object.prototype.hasOwnProperty.call(g.bids,missing.id))g.bids[missing.id]={amount:0,cards:[],submittedAt:Date.now(),auto:true};game.addLog(g,'הצעות חסרות הושלמו אוטומטית באפס זוזים');}
      if(Object.keys(g.bids).length===g.players.length){
-      const result=game.revealAuction(g);
+      log('auction.reveal.begin',{gameCode:g.code,bidCount:Object.keys(g.bids).length,players:g.players.length,ingredient:g.marketIngredients[g.ingredientIndex]});const result=game.revealAuction(g);log('auction.reveal.complete',{gameCode:g.code,pendingTie:!!result.pending,winnerId:result.winnerId||null,phase:g.phase,ingredientIndex:g.ingredientIndex,over:g.over});
       if(result.pending){await saveGame(g);if(g.players[g.turn].id!==pl.id)return pause('יש תיקו במכרז. ממתינים להכרעת '+g.players[g.turn].name);const options=g.tieCandidates.map((pid,i)=>(i+1)+' עבור '+g.players.find(x=>x.id===pid).name).join('. ');return prompt('יש תיקו על המצרך '+g.tieIngredient+'. '+options+'. הקישו את מספר השחקן שיזכה',{allowed:g.tieCandidates.map((_,i)=>String(i+1)).join('')});}
       if(g.over){await saveGame(g);return prompt('המשחק הסתיים. המנצח '+g.players.find(x=>x.id===g.winner).name);}
       await saveGame(g);
@@ -143,7 +143,7 @@ async function handle(req,res){
      if(g.players[g.turn].id!==pl.id)return pause('כעת תור '+g.players[g.turn].name+'. '+playerStatus(pl));
      if(answer==='2')return prompt(playerStatus(pl)+' הקישו אחת לחזרה',{allowed:'1'});
      if(answer==='1'){
-      game.openMarket(g);runBots(g);await saveGame(g);f.step='game';
+      game.openMarket(g);log('market.opened',{gameCode:g.code,round:g.round,turn:g.turn,marketCard:g.marketCard?.id,ingredientCount:g.marketIngredients.length,phase:g.phase});runBots(g);await saveGame(g);f.step='game';
       return prompt(marketSummary(g)+'. '+playerStatus(pl)+' הקישו אחת להמשך למכרז',{allowed:'1'});
      }
      return prompt('לפתיחת קלף שוק הקישו אחת. למצב אישי הקישו שתיים. למכירת מצרך הקישו שלוש. להפעלת קלף חבר\'ה הקישו ארבע. לרכישת קלף חבר\'ה הקישו חמש',{allowed:'12345'});
@@ -180,14 +180,14 @@ async function handle(req,res){
    if(f.step==='bid'){
     const g=await loadGame(f.code),pl=playerOf(g,f);if(!g||!pl){f.step='menu';return prompt('המשחק אינו זמין');}
     const amount=Number(answer);
-    try{game.submitSecretBid(g,pl.id,amount);}catch(e){return prompt('הצעה לא תקינה. יש להקיש סכום שניתן לשלם באמצעות קלפי הכסף שבידכם',{max:2,min:1,timeout:25});}
+    try{game.submitSecretBid(g,pl.id,amount);log('auction.bid_submitted',{gameCode:g.code,playerId:pl.id,phase:g.phase,bidCount:Object.keys(g.bids).length,totalPlayers:g.players.length});}catch(e){return prompt('הצעה לא תקינה. יש להקיש סכום שניתן לשלם באמצעות קלפי הכסף שבידכם',{max:2,min:1,timeout:25});}
     runBots(g);await saveGame(g);f.step='game';
     return pause('ההצעה נקלטה ונשמרה בסתר. ממתינים לשאר השחקנים');
    }
    f.step='menu';f.expect=null;return prompt('חזרתם לתפריט הראשי. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});
   });
  }catch(e){
-  log('request.error',{code:e.code||e.name||'UNKNOWN',message:String(e.message||e).slice(0,240),stack:String(e.stack||'').split('\\n').slice(0,4).join(' | ')});
+  log('request.error',{code:e.code||e.name||'UNKNOWN',message:String(e.message||e).slice(0,240),stack:String(e.stack||'').split('\n').slice(0,4).join(' | ')});
   if(!res.headersSent)response(res,e.code==='HF_CONFLICT'?'id_list_message=t-המשחק עודכן במקביל. אנא הקישו שוב':'id_list_message=t-אירעה שגיאה. נסו שוב');
  }
 }
