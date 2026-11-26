@@ -25,6 +25,33 @@ async function save(k,v,ttl=TTL){await hf.set(k,JSON.stringify(v),ttl);}
 const gameKey=c=>key('game',c),flowKey=c=>key('flow',c);
 async function loadGame(c){return load(gameKey(c));}
 async function saveGame(g){log('game.save.begin',{gameCode:g.code,started:g.started,phase:g.phase,players:g.players.length,round:g.round,turn:g.turn});return save(gameKey(g.code),g);}
+async function registerResume(codeValue,playerId){
+ for(let attempt=1;attempt<=5;attempt++){
+  const g=await loadGame(codeValue);
+  if(!g||g.over||!g.players.some(x=>x.id===playerId))return {ok:false,reason:'unavailable'};
+  const now=Date.now();
+  let session=g.resumeSession;
+  if(!session||session.status==='complete'||now>session.expiresAt){
+   session={id:id(),status:'waiting',startedAt:now,expiresAt:now+180000,ready:{}};
+   g.resumeSession=session;
+   log('resume.session_created',{gameCode:codeValue,sessionId:session.id,expiresAt:session.expiresAt});
+  }
+  session.ready=session.ready||{};
+  session.ready[playerId]=now;
+  const humans=g.players.filter(x=>!x.isBot);
+  const ready=humans.filter(x=>session.ready[x.id]&&now-session.ready[x.id]<=180000).length;
+  if(ready===humans.length){session.status='complete';session.completedAt=now;g.lastResumedAt=now;}
+  try{
+   await saveGame(g);
+   log('resume.player_registered',{gameCode:codeValue,sessionId:session.id,playerId,ready,required:humans.length,status:session.status,attempt});
+   return {ok:true,game:g,sessionId:session.id,ready,required:humans.length,complete:session.status==='complete'};
+  }catch(e){
+   if(!['HF_CONFLICT','HF_READ_REQUIRED'].includes(e.code)||attempt===5)throw e;
+   log('resume.concurrent_retry',{gameCode:codeValue,playerId,attempt,errorCode:e.code});
+  }
+ }
+ throw Object.assign(new Error('Could not register resume request'),{code:'HF_CONFLICT'});
+}
 async function loadFlow(c){return await load(flowKey(c))||{step:'menu',seq:0};}
 async function saveFlow(c,f){return save(flowKey(c),f,4*60*60);}
 function getInput(p,f){return p[f.expect]===undefined?'':String(p[f.expect]);}
@@ -59,28 +86,30 @@ async function handle(req,res){
     if(answer==='2'){f.step='join_code';return prompt('הקישו את קוד המשחק בן שלוש הספרות',{min:3,max:3,style:'Digits'});}
     if(answer==='3'){
      if(!canResume){f.expect=null;return prompt('לא נמצא משחק קודם שעדיין לא הסתיים. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});}
-     f.code=resumeGame.code;f.playerId=resumePlayer.id;f.step='resume_wait';
-     resumeGame.resumeReady=resumeGame.resumeReady||{};
-     resumeGame.resumeReady[resumePlayer.id]={at:Date.now()};
-     const humans=resumeGame.players.filter(x=>!x.isBot);
-     const ready=humans.filter(x=>resumeGame.resumeReady[x.id]&&Date.now()-resumeGame.resumeReady[x.id].at<180000).length;
-     await saveGame(resumeGame);
-     log('game.resume_requested',{gameCode:resumeGame.code,playerId:resumePlayer.id,ready,required:humans.length});
-     if(ready===humans.length){resumeGame.resumeReady={};resumeGame.lastResumedAt=Date.now();await saveGame(resumeGame);f.step='game';return prompt('כל השחקנים התחברו מחדש. ממשיכים מהנקודה שבה המשחק נעצר. '+playerStatus(resumePlayer)+'. '+(resumeGame.phase==='turn'?'כעת תור '+resumeGame.players[resumeGame.turn].name:'כעת מתנהל מכרז על '+(resumeGame.marketIngredients[resumeGame.ingredientIndex]||'המצרך הבא')),{allowed:'12345'});}
-     return pause('בקשת ההמשך נקלטה. מחכים שכל השחקנים יחייגו ויקישו שלוש. התחברו '+ready+' מתוך '+humans.length);
+     const joined=await registerResume(resumeGame.code,resumePlayer.id);
+     if(!joined.ok){f.expect=null;return prompt('המשחק כבר הסתיים או אינו זמין. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});}
+     f.code=resumeGame.code;f.playerId=resumePlayer.id;f.resumeSessionId=joined.sessionId;f.step=joined.complete?'game':'resume_wait';
+     log('game.resume_requested',{gameCode:resumeGame.code,playerId:resumePlayer.id,sessionId:joined.sessionId,ready:joined.ready,required:joined.required,complete:joined.complete});
+     if(joined.complete)return prompt('כל השחקנים התחברו מחדש. ממשיכים מהנקודה שבה המשחק נעצר. '+playerStatus(resumePlayer)+'. '+(joined.game.phase==='turn'?'כעת תור '+joined.game.players[joined.game.turn].name:'כעת מתנהל מכרז על '+(joined.game.marketIngredients[joined.game.ingredientIndex]||'המצרך הבא')),{allowed:'12345'});
+     return pause('בקשת ההמשך נקלטה. מחכים שכל השחקנים יחייגו ויקישו שלוש. התחברו '+joined.ready+' מתוך '+joined.required);
     }
     f.expect=null;return prompt('בחירה לא תקינה. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});
    }
    if(f.step==='resume_wait'){
     const g=await loadGame(f.code),pl=playerOf(g,f);
-    if(!g||!pl||g.over){f.step='menu';f.expect=null;return prompt('המשחק כבר הסתיים או אינו זמין. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});}
-    const humans=g.players.filter(x=>!x.isBot);
-    const ready=humans.filter(x=>g.resumeReady&&g.resumeReady[x.id]&&Date.now()-g.resumeReady[x.id].at<180000).length;
-    if(ready===humans.length){
-     g.resumeReady={};g.lastResumedAt=Date.now();await saveGame(g);f.step='game';
-     log('game.resume_completed',{gameCode:g.code,playerId:pl.id,players:humans.length,phase:g.phase,turn:g.turn});
+    if(!g||!pl||g.over){f.step='menu';f.expect=null;f.resumeSessionId=null;return prompt('המשחק כבר הסתיים או אינו זמין. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});}
+    const session=g.resumeSession;
+    if(session&&session.id===f.resumeSessionId&&session.status==='complete'){
+     f.step='game';
+     log('game.resume_observed',{gameCode:g.code,playerId:pl.id,sessionId:session.id,phase:g.phase,turn:g.turn});
      return prompt('כל השחקנים התחברו מחדש. המשחק ממשיך מאותה נקודה. '+playerStatus(pl)+'. '+(g.phase==='turn'?'כעת תור '+g.players[g.turn].name:'כעת מתנהל מכרז על '+(g.marketIngredients[g.ingredientIndex]||'המצרך הבא')),{allowed:'12345'});
     }
+    if(!session||session.id!==f.resumeSessionId||Date.now()>session.expiresAt){
+     f.step='menu';f.expect=null;f.resumeSessionId=null;
+     return prompt('חלון ההתחברות מחדש הסתיים. חזרו לתפריט הראשי והקישו שלוש כדי להתחיל חיבור מחדש',{allowed:'123'});
+    }
+    const humans=g.players.filter(x=>!x.isBot);
+    const ready=humans.filter(x=>session.ready&&session.ready[x.id]&&Date.now()-session.ready[x.id]<=180000).length;
     return pause('ממתינים לחזרת כל השחקנים. התחברו '+ready+' מתוך '+humans.length+'. כל שחקן צריך לחייג ולהקיש שלוש בתפריט הראשי');
    }
    if(f.step==='mode'){
