@@ -60,7 +60,7 @@ function playerOf(g,f){return g&&g.players.find(p=>p.id===f.playerId);}
 function nextHuman(g){return g.players.find(p=>!p.isBot&&!Object.prototype.hasOwnProperty.call(g.bids,p.id));}
 function runBots(g){for(const p of g.players.filter(x=>x.isBot))if(!Object.prototype.hasOwnProperty.call(g.bids,p.id))bot.playBot(g,p);}
 function marketSummary(g){return 'קלף השוק '+g.marketCard.name+'. '+g.marketCard.description+'. המצרכים שנפתחו: '+g.marketIngredients.join(', ');}
-function playerStatus(p){return 'המתכון שלכם '+p.recipe.name+'. אספתם '+game.recipeProgress(p)+' מתוך '+p.recipe.ingredients.length+' מצרכים. יתרתכם '+game.coinTotal(p)+' זוזים. בידכם '+p.friends.length+' קלפי חבר\'ה.';}
+function playerStatus(p){return 'המתכון שלכם '+p.recipe.name+'. אספתם '+game.recipeProgress(p)+' מתוך '+p.recipe.ingredients.length+' מצרכים. יתרתכם '+game.coinTotal(p)+' זוזים. בידכם '+p.friends.length+' קלפי חֵברֵ\'ה.';}
 async function handle(req,res){
  try{
   const p={...(req.query||{}),...(req.body||{})};
