@@ -15,6 +15,8 @@ const next=(f)=>'P'+(++f.seq);
 const read=(f,text,o={})=>{const n=next(f);f.expect=n;return `read=${say(text)}=${readParams(n,o)}`;};
 const wait=(f,text='ממתינים לעדכון המשחק')=>{const n=next(f);f.expect=n;return `read=${HOLD?'f-'+HOLD:say(text)}=${readParams(n,{max:'',min:'',timeout:WAIT,style:'NO',onEmpty:'Ok'})}`;};
 const id=()=>crypto.randomBytes(8).toString('hex');
+const phoneHash=phone=>crypto.createHash('sha256').update(String(phone)).digest('hex');
+const phoneKey=phone=>key('phone',phoneHash(phone));
 const code=()=>String(100+crypto.randomInt(900));
 const key=(type,value)=>PREFIX+type+':'+value;
 async function load(k){const x=await hf.get(k);return x?JSON.parse(x):null;}
@@ -38,6 +40,7 @@ async function handle(req,res){
   if(!callId)return response(res,'id_list_message=t-מזהה שיחה חסר');
   await hf.runWithContext(async()=>{
    let f=await loadFlow(callId);
+   if(f.step==='menu'&&!f.expect&&p.ApiPhone){const ref=await load(phoneKey(p.ApiPhone));if(ref){const oldGame=await loadGame(ref.code);if(oldGame&&oldGame.started&&!oldGame.over&&playerOf(oldGame,{playerId:ref.playerId})){f={step:'game',seq:f.seq||0,code:ref.code,playerId:ref.playerId};}}}
    const answer=getInput(p,f);
    const send=async(body)=>{await saveFlow(callId,f);response(res,body);};
    const prompt=(text,o)=>send(read(f,text,o));
@@ -79,8 +82,8 @@ async function handle(req,res){
     const name=answer.trim().slice(0,24);if(!name)return prompt('לא התקבל שם. הקלידו את שמכם',{max:'',min:'',style:'HebrewKeyboard',timeout:30});
     const g=await loadGame(f.code);if(!g)return prompt('המשחק אינו זמין. חזרו לתפריט הראשי');
     let pl=playerOf(g,f);if(!pl){pl=game.newPlayer(f.playerId,name);g.players.push(pl);}pl.name=name;
-    if(g.mode==='bots'){game.startGame(g);await saveGame(g);f.step='game';return prompt('המשחק מתחיל. '+playerStatus(pl)+' לפתיחת קלף שוק הקישו אחת. למצב אישי הקישו שתיים',{allowed:'12'});}
-    await saveGame(g);f.step='lobby';return pause('נרשמתם למשחק. קוד המשחק '+g.code+'. ממתינים להצטרפות שאר השחקנים');
+    if(g.mode==='bots'){game.startGame(g);await saveGame(g);if(p.ApiPhone){const pk=phoneKey(p.ApiPhone);await load(pk);await save(pk,{code:g.code,playerId:pl.id},TTL);}f.step='game';return prompt('המשחק מתחיל. '+playerStatus(pl)+' לפתיחת קלף שוק הקישו אחת. למצב אישי הקישו שתיים',{allowed:'12'});}
+    await saveGame(g);if(p.ApiPhone){const pk=phoneKey(p.ApiPhone);await load(pk);await save(pk,{code:g.code,playerId:pl.id},TTL);}f.step='lobby';return pause('נרשמתם למשחק. קוד המשחק '+g.code+'. ממתינים להצטרפות שאר השחקנים');
    }
    if(f.step==='lobby'){
     const g=await loadGame(f.code);if(!g){f.step='menu';return prompt('המשחק לא נמצא. חזרו לתפריט');}
@@ -102,6 +105,7 @@ async function handle(req,res){
     }
     if(g.phase==='bidding'){
      runBots(g);
+     if(g.bidDeadline&&Date.now()>g.bidDeadline){for(const missing of g.players)if(!Object.prototype.hasOwnProperty.call(g.bids,missing.id))g.bids[missing.id]={amount:0,cards:[],submittedAt:Date.now(),auto:true};game.addLog(g,'הצעות חסרות הושלמו אוטומטית באפס זוזים');}
      if(Object.keys(g.bids).length===g.players.length){
       const result=game.revealAuction(g);
       if(result.pending){await saveGame(g);if(g.players[g.turn].id!==pl.id)return pause('יש תיקו במכרז. ממתינים להכרעת '+g.players[g.turn].name);const options=g.tieCandidates.map((pid,i)=>(i+1)+' עבור '+g.players.find(x=>x.id===pid).name).join('. ');return prompt('יש תיקו על המצרך '+g.tieIngredient+'. '+options+'. הקישו את מספר השחקן שיזכה',{allowed:g.tieCandidates.map((_,i)=>String(i+1)).join('')});}
@@ -118,6 +122,7 @@ async function handle(req,res){
      await saveGame(g);return pause('ההצעה שלכם נקלטה בסתר. ממתינים לשאר השחקנים');
     }
     if(g.phase==='turn'){
+     if(g.turnDeadline&&Date.now()>g.turnDeadline){const skipped=g.players[g.turn];game.nextTurn(g);game.addLog(g,skipped.name+' לא פעל בזמן והתור עבר אוטומטית');await saveGame(g);return pause('התור הקודם דולג עקב חוסר פעילות. כעת תור '+g.players[g.turn].name);}
      if(g.players[g.turn].id!==pl.id)return pause('כעת תור '+g.players[g.turn].name+'. '+playerStatus(pl));
      if(answer==='2')return prompt(playerStatus(pl)+' הקישו אחת לחזרה',{allowed:'1'});
      if(answer==='3'){if(!pl.ingredients.length)return prompt('אין לכם מצרכים למכירה. לפתיחת קלף שוק הקישו אחת',{allowed:'1'});f.step='sell_select';return prompt('המצרכים שלכם: '+pl.ingredients.map((x,i)=>(i+1)+' '+x).join('. ')+'. הקישו את מספר המצרך למכירה',{allowed:pl.ingredients.map((_,i)=>String(i+1)).join('')});}
