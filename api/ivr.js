@@ -17,13 +17,14 @@ const wait=(f,text='ממתינים לעדכון המשחק')=>{const n=next(f);f
 const id=()=>crypto.randomBytes(8).toString('hex');
 const phoneHash=phone=>crypto.createHash('sha256').update(String(phone)).digest('hex');
 const phoneKey=phone=>key('phone',phoneHash(phone));
+function log(event,details={}){console.log(JSON.stringify({service:'aluf-hachamin-ivr',ts:new Date().toISOString(),event,...details}));}
 const code=()=>String(100+crypto.randomInt(900));
 const key=(type,value)=>PREFIX+type+':'+value;
 async function load(k){const x=await hf.get(k);return x?JSON.parse(x):null;}
 async function save(k,v,ttl=TTL){await hf.set(k,JSON.stringify(v),ttl);}
 const gameKey=c=>key('game',c),flowKey=c=>key('flow',c);
 async function loadGame(c){return load(gameKey(c));}
-async function saveGame(g){return save(gameKey(g.code),g);}
+async function saveGame(g){log('game.save.begin',{gameCode:g.code,started:g.started,phase:g.phase,players:g.players.length,round:g.round,turn:g.turn});return save(gameKey(g.code),g);}
 async function loadFlow(c){return await load(flowKey(c))||{step:'menu',seq:0};}
 async function saveFlow(c,f){return save(flowKey(c),f,4*60*60);}
 function getInput(p,f){return p[f.expect]===undefined?'':String(p[f.expect]);}
@@ -37,12 +38,12 @@ async function handle(req,res){
  try{
   const p={...(req.query||{}),...(req.body||{})};
   const callId=String(p.ApiCallId||p.api_call_id||p.callId||'');
-  if(!callId)return response(res,'id_list_message=t-מזהה שיחה חסר');
+  if(!callId){log('request.rejected',{reason:'missing_call_id'});return response(res,'id_list_message=t-מזהה שיחה חסר');}
   await hf.runWithContext(async()=>{
    let f=await loadFlow(callId);
    if(f.step==='menu'&&!f.expect&&p.ApiPhone){const ref=await load(phoneKey(p.ApiPhone));if(ref){const oldGame=await loadGame(ref.code);if(oldGame&&!oldGame.over&&playerOf(oldGame,{playerId:ref.playerId})){f={step:oldGame.started?'game':'lobby',seq:f.seq||0,code:ref.code,playerId:ref.playerId};}}}
-   const answer=getInput(p,f);
-   const send=async(body)=>{await saveFlow(callId,f);response(res,body);};
+   const answer=getInput(p,f);log('request.received',{call:phoneHash(callId).slice(0,10),step:f.step,gameCode:f.code||null,hasAnswer:answer!=='',answerLength:answer.length,queryKeys:Object.keys(req.query||{}),bodyKeys:Object.keys(req.body||{})});
+   const send=async(body)=>{log('response.send',{call:phoneHash(callId).slice(0,10),step:f.step,expect:f.expect||null,gameCode:f.code||null,bodyLength:String(body).length});await saveFlow(callId,f);response(res,body);};
    const prompt=(text,o)=>send(read(f,text,o));
    const pause=(text)=>send(wait(f,text));
    if(f.step==='menu'){
@@ -87,7 +88,18 @@ async function handle(req,res){
    }
    if(f.step==='lobby'){
     const g=await loadGame(f.code);if(!g){f.step='menu';return prompt('המשחק לא נמצא. חזרו לתפריט');}
-    if(!g.started&&g.players.length===g.maxPlayers){game.startGame(g);await saveGame(g);f.step='game';return prompt('כל השחקנים הצטרפו והמשחק מתחיל. '+playerStatus(playerOf(g,f))+' הקישו אחת להמשך',{allowed:'1'});}
+    if(g.started){
+     f.step='game';
+     const me=playerOf(g,f);
+     log('lobby.player_resumed',{gameCode:g.code,playerId:f.playerId,players:g.players.length,phase:g.phase,turn:g.turn});
+     return prompt('כל השחקנים כבר הצטרפו. המשחק פעיל! '+playerStatus(me)+'. '+(g.phase==='turn'?'כעת תור '+g.players[g.turn].name+'. לפתיחת קלף שוק הקישו אחת':'כעת מתנהל מכרז על '+(g.marketIngredients[g.ingredientIndex]||'המצרך הבא')+'. הקישו אחת להמשך'),{allowed:'1'});
+    }
+    if(g.players.length===g.maxPlayers){
+     game.startGame(g);await saveGame(g);f.step='game';
+     log('game.started',{gameCode:g.code,players:g.players.length,startedBy:f.playerId,phase:g.phase,turn:g.turn});
+     return prompt('כל השחקנים הצטרפו והמשחק מתחיל. '+playerStatus(playerOf(g,f))+' הקישו אחת להמשך',{allowed:'1'});
+    }
+    log('lobby.waiting',{gameCode:g.code,joined:g.players.length,required:g.maxPlayers,playerId:f.playerId});
     return pause('ממתינים לשחקנים. הצטרפו '+g.players.length+' מתוך '+g.maxPlayers);
    }
    if(f.step==='game'){
@@ -175,7 +187,7 @@ async function handle(req,res){
    f.step='menu';f.expect=null;return prompt('חזרתם לתפריט הראשי. למשחק חדש הקישו אחת. להצטרפות הקישו שתיים',{allowed:'12'});
   });
  }catch(e){
-  console.error(JSON.stringify({service:'aluf-hachamin-ivr',event:'error',code:e.code||'UNKNOWN',message:String(e.message||e).slice(0,160)}));
+  log('request.error',{code:e.code||e.name||'UNKNOWN',message:String(e.message||e).slice(0,240),stack:String(e.stack||'').split('\\n').slice(0,4).join(' | ')});
   if(!res.headersSent)response(res,e.code==='HF_CONFLICT'?'id_list_message=t-המשחק עודכן במקביל. אנא הקישו שוב':'id_list_message=t-אירעה שגיאה. נסו שוב');
  }
 }
