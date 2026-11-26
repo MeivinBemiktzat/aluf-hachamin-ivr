@@ -120,14 +120,22 @@ async function handle(req,res){
     if(g.phase==='turn'){
      if(g.players[g.turn].id!==pl.id)return pause('כעת תור '+g.players[g.turn].name+'. '+playerStatus(pl));
      if(answer==='2')return prompt(playerStatus(pl)+' הקישו אחת לחזרה',{allowed:'1'});
+     if(answer==='3'){if(!pl.ingredients.length)return prompt('אין לכם מצרכים למכירה. לפתיחת קלף שוק הקישו אחת',{allowed:'1'});f.step='sell_select';return prompt('המצרכים שלכם: '+pl.ingredients.map((x,i)=>(i+1)+' '+x).join('. ')+'. הקישו את מספר המצרך למכירה',{allowed:pl.ingredients.map((_,i)=>String(i+1)).join('')});}
      if(answer==='1'){
       game.openMarket(g);runBots(g);await saveGame(g);f.step='game';
       return prompt(marketSummary(g)+'. '+playerStatus(pl)+' הקישו אחת להמשך למכרז',{allowed:'1'});
      }
-     return prompt('לפתיחת קלף שוק הקישו אחת. למצב אישי הקישו שתיים',{allowed:'12'});
+     return prompt('לפתיחת קלף שוק הקישו אחת. למצב אישי הקישו שתיים. למכירת מצרך הקישו שלוש',{allowed:'123'});
     }
     if(g.phase==='over'){f.step='menu';f.expect=null;return prompt('המשחק הסתיים. המנצח '+g.players.find(x=>x.id===g.winner).name);}
     return pause('ממתינים לעדכון המשחק');
+   }
+   if(f.step==='sell_select'){
+    const g=await loadGame(f.code),pl=playerOf(g,f);if(!g||!pl)return prompt('המשחק אינו זמין');
+    const index=Number(answer)-1;
+    if(!Number.isInteger(index)||index<0||index>=pl.ingredients.length)return prompt('בחירת מצרך לא תקינה');
+    game.sellIngredient(pl,index,g,false);await saveGame(g);f.step='game';
+    return prompt('מכרתם את המצרך וקיבלתם שני קלפי כסף. '+playerStatus(pl)+' הקישו אחת להמשך',{allowed:'1'});
    }
    if(f.step==='bid_menu'){
     if(answer==='1'){f.step='bid';return prompt('הקישו את סכום ההצעה בזוזים. ההצעה נשמרת בסתר',{max:2,min:1,timeout:25});}
