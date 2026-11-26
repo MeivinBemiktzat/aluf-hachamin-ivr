@@ -232,13 +232,6 @@
       "value": 1
     },
     {
-      "id": "blocker",
-      "name": "השומר",
-      "description": "קבלו הגנה מפני קלף חבר'ה",
-      "effect": "protect",
-      "value": 0
-    },
-    {
       "id": "swap",
       "name": "החלפן",
       "description": "החליפו קלף חבר'ה אחד בקלף מהקופה",
@@ -262,7 +255,7 @@
     {
       "id": "baby",
       "name": "הבבי",
-      "description": "קבלו מצרך נוסף, כל עוד לא אספתם שישה",
+      "description": "אם אספתם הכי מעט מצרכים, קבלו מצרך נוסף. לא ניתן להשתמש כשיש שישה מצרכים",
       "effect": "extra_ingredient",
       "value": 0
     },
@@ -271,13 +264,6 @@
       "name": "הדוד",
       "description": "קבלו שני קלפי כסף אקראיים",
       "effect": "take_two_money",
-      "value": 0
-    },
-    {
-      "id": "spy",
-      "name": "המרגל הוותיק",
-      "description": "בטלו את השפעת קלף החבר'ה האחרון",
-      "effect": "cancel_last",
       "value": 0
     }
   ]
