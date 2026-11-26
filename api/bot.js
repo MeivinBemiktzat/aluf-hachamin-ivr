@@ -18,6 +18,7 @@ function chooseFriend(g,p){
 }
 function playBot(g,p){
  if(g.phase!=='bidding'||Object.prototype.hasOwnProperty.call(g.bids,p.id))return;
+ const index=chooseFriend(g,p);if(index>=0){try{game.activateFriend(g,p.id,index);}catch{}}
  const amount=decideBid(g,p);
  game.submitSecretBid(g,p.id,amount);
 }
