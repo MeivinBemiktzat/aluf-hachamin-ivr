@@ -60,7 +60,7 @@ function playerOf(g,f){return g&&g.players.find(p=>p.id===f.playerId);}
 function nextHuman(g){return g.players.find(p=>!p.isBot&&!Object.prototype.hasOwnProperty.call(g.bids,p.id));}
 function runBots(g){for(const p of g.players.filter(x=>x.isBot))if(!Object.prototype.hasOwnProperty.call(g.bids,p.id))bot.playBot(g,p);}
 function marketSummary(g){return 'קלף השוק '+g.marketCard.name+'. '+g.marketCard.description+'. המצרכים שנפתחו: '+g.marketIngredients.join(', ');}
-function playerStatus(p){return 'המתכון שלכם '+p.recipe.name+'. אספתם '+game.recipeProgress(p)+' מתוך '+p.recipe.ingredients.length+' מצרכים. יתרתכם '+game.coinTotal(p)+' זוזים. בידכם '+p.friends.length+' קלפי חֵברֵ\'ה.';}
+function playerStatus(p){const list=(p.recipe?.ingredients||[]).map(name=>name+(p.ingredients.includes(name)?' – נאסף':' – חסר')).join(', ');return 'המתכון שלכם '+p.recipe.name+'. כל המצרכים במתכון: '+list+'. אספתם '+game.recipeProgress(p)+' מתוך '+(p.recipe?.ingredients.length||0)+' מצרכים. יתרתכם '+game.coinTotal(p)+' זוזים. בידכם '+p.friends.length+' קלפי חבר\'ה.';}
 async function handle(req,res){
  try{
   const p={...(req.query||{}),...(req.body||{})};
@@ -218,7 +218,7 @@ async function handle(req,res){
    }
    if(f.step==='bid_menu'){
     if(answer==='5'){const g=await loadGame(f.code),pl=playerOf(g,f);try{const card=game.buyFriend(g,pl.id);await saveGame(g);return prompt('רכשתם קלף חבר\'ה: '+card.name+'. להצעה הקישו אחת. להפעלת קלף הקישו שתיים',{allowed:'12'});}catch(e){return prompt(e.message+'. להצעה הקישו אחת',{allowed:'1'});}}
-    if(answer==='1'){f.step='bid';return prompt('הקישו את סכום ההצעה בזוזים. ההצעה נשמרת בסתר',{max:2,min:1,timeout:25});}
+    if(answer==='1'){const g=await loadGame(f.code),pl=playerOf(g,f),ingredient=g?.marketIngredients?.[g.ingredientIndex];if(!g||!pl||!ingredient)return prompt('פרטי המכרז אינם זמינים כרגע. הקישו שלוש למצב אישי',{allowed:'3'});const needed=game.needsIngredient(pl,ingredient);f.step='bid';return prompt('המצרך במכרז הוא '+ingredient+'. '+(needed?'אתם צריכים את המצרך הזה לפי המתכון שלכם והוא עדיין חסר לכם.':'אינכם צריכים את המצרך הזה לפי המתכון שלכם, או שכבר אספתם אותו.')+' כעת הקישו את סכום ההצעה בזוזים. ההצעה נשמרת בסתר',{max:2,min:1,timeout:25});}
     if(answer==='2'){
      const g=await loadGame(f.code),pl=playerOf(g,f);if(!g||!pl)return prompt('המשחק אינו זמין');
      if(!pl.friends.length)return prompt('אין בידכם קלפי חבר\'ה. להגשת הצעה הקישו אחת',{allowed:'1'});
