@@ -165,7 +165,7 @@ function activateFriend(g,playerId,cardIndex,targetId){
   case 'boost': if(bid)bid.amount+=card.value||1;else p.nextBidBonus=(p.nextBidBonus||0)+(card.value||1);break;
   case 'discount': if(bid)bid.amount=Math.max(0,bid.amount-(card.value||1));else p.nextBidDiscount=(p.nextBidDiscount||0)+(card.value||1);break;
   case 'protect': p.protections++;break;
-  case 'replace': if(p.friends.length){p.friends.splice(rand(p.friends.length),1);drawFriend(g,p);}break;
+  case 'replace': if(p.friends.length){g.discard.friends.push(p.friends.splice(rand(p.friends.length),1)[0]);drawFriend(g,p);}break;
   case 'take_money': if(!target||!target.coins.length)throw Error('אין לשחקן היעד כסף לקחת');p.coins.push(target.coins.splice(rand(target.coins.length),1)[0]);break;
   case 'steal_bid': if(!target||!g.bids[target.id])throw Error('לשחקן היעד אין הצעה');bid.amount+=g.bids[target.id].amount;break;
   case 'double_one': if(!bid)throw Error('אין הצעה פעילה');bid.amount+=Math.max(1,card.value||1);break;
@@ -179,7 +179,7 @@ function activateFriend(g,playerId,cardIndex,targetId){
   case 'modify_bid': if(!target||!g.bids[target.id])throw Error('אין הצעה לשנות');g.bids[target.id].amount=Math.max(0,g.bids[target.id].amount+(card.value||0));break;
   case 'steal_card': if(!target)throw Error('שחקן יעד חסר');if(target.friends.length)p.friends.push(target.friends.splice(rand(target.friends.length),1)[0]);else if(target.coins.length)p.coins.push(target.coins.splice(rand(target.coins.length),1)[0]);else throw Error('אין מה לקחת');break;
   case 'retrieve': if(!g.discard.friends.length)throw Error('אין קלף חבר\'ה בערימת המשומשים');p.friends.push(g.discard.friends.pop());break;
-  case 'extra_ingredient': if(p.ingredients.length>=6)throw Error('שחקן עם שישה מצרכים חייב לזכות במצרך האחרון במכרז');p.ingredients.push(pick(data.ingredients));break;
+  case 'extra_ingredient': if(p.ingredients.length>=6)throw Error('שחקן עם שישה מצרכים חייב לזכות במצרך האחרון במכרז');const fewest=Math.min(...g.players.map(x=>x.ingredients.length));if(p.ingredients.length!==fewest)throw Error('הקלף מיועד לשחקן שאסף הכי מעט מצרכים');p.ingredients.push(pick(data.ingredients));break;
   case 'reduce_all': if(!target||!g.bids[target.id])throw Error('אין הצעה להפחית');g.bids[target.id].amount=Math.max(0,g.bids[target.id].amount-2);break;
   case 'zero_all': if(!target||!g.bids[target.id])throw Error('אין הצעה לאפס');g.bids[target.id].amount=0;break;
   case 'take_two_money': giveMoney(p,2);break;
