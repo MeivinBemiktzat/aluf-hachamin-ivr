@@ -119,7 +119,7 @@ async function handle(req,res){
      if(waiting&&waiting.id!==pl.id)return pause('ממתינים להצעה הסודית של '+waiting.name+'. להפעלת קלף חבר\'ה הקישו ארבע. לרכישת קלף הקישו חמש');
      if(!Object.prototype.hasOwnProperty.call(g.bids,pl.id)){
       f.step='bid_menu';await saveGame(g);
-      return prompt('המכרז על '+g.marketIngredients[g.ingredientIndex]+'. להגשת הצעה הקישו אחת. להפעלת קלף חבר\'ה הקישו שתיים. למצב אישי הקישו שלוש',{allowed:'123'});
+      return prompt('המכרז על '+g.marketIngredients[g.ingredientIndex]+'. להגשת הצעה הקישו אחת. להפעלת קלף חבר\'ה הקישו שתיים. למצב אישי הקישו שלוש. לרכישת קלף חבר\'ה הקישו חמש',{allowed:'1235'});
      }
      await saveGame(g);return pause('ההצעה שלכם נקלטה בסתר. ממתינים לשאר השחקנים');
     }
@@ -147,6 +147,7 @@ async function handle(req,res){
     return prompt('מכרתם את המצרך וקיבלתם שני קלפי כסף. '+playerStatus(pl)+' הקישו אחת להמשך',{allowed:'1'});
    }
    if(f.step==='bid_menu'){
+    if(answer==='5'){const g=await loadGame(f.code),pl=playerOf(g,f);try{const card=game.buyFriend(g,pl.id);await saveGame(g);return prompt('רכשתם קלף חבר\'ה: '+card.name+'. להצעה הקישו אחת. להפעלת קלף הקישו שתיים',{allowed:'12'});}catch(e){return prompt(e.message+'. להצעה הקישו אחת',{allowed:'1'});}}
     if(answer==='1'){f.step='bid';return prompt('הקישו את סכום ההצעה בזוזים. ההצעה נשמרת בסתר',{max:2,min:1,timeout:25});}
     if(answer==='2'){
      const g=await loadGame(f.code),pl=playerOf(g,f);if(!g||!pl)return prompt('המשחק אינו זמין');
