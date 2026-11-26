@@ -90,11 +90,22 @@ async function handle(req,res){
    if(f.step==='game'){
     const g=await loadGame(f.code),pl=playerOf(g,f);if(!g||!pl){f.step='menu';return prompt('לא נמצא משחק פעיל');}
     if(g.over){f.step='menu';f.expect=null;return prompt('המשחק הסתיים. המנצח הוא '+(g.players.find(x=>x.id===g.winner)?.name||'לא ידוע'));}
+    if(g.phase==='tie'){
+     if(g.players[g.turn].id!==pl.id)return pause('יש תיקו במכרז. ממתינים להכרעת '+g.players[g.turn].name);
+     const choice=Number(answer);
+     if(!Number.isInteger(choice)||choice<1||choice>g.tieCandidates.length){
+      const options=g.tieCandidates.map((pid,i)=>(i+1)+' עבור '+g.players.find(x=>x.id===pid).name).join('. ');
+      return prompt('יש תיקו על המצרך '+g.tieIngredient+'. '+options+'. הקישו את מספר השחקן שיזכה',{allowed:g.tieCandidates.map((_,i)=>String(i+1)).join('')});
+     }
+     const winnerId=g.tieCandidates[choice-1],result=game.resolveTie(g,winnerId);await saveGame(g);
+     return prompt('ההכרעה נקלטה. '+g.players.find(x=>x.id===winnerId).name+' זכה במצרך. הקישו אחת להמשך',{allowed:'1'});
+    }
     if(g.phase==='bidding'){
      runBots(g);
      if(Object.keys(g.bids).length===g.players.length){
       const result=game.revealAuction(g);
-      if(g.over){await saveGame(g);return prompt('המשחק הסתיים. המנצח '+pl.name);}
+      if(result.pending){await saveGame(g);if(g.players[g.turn].id!==pl.id)return pause('יש תיקו במכרז. ממתינים להכרעת '+g.players[g.turn].name);const options=g.tieCandidates.map((pid,i)=>(i+1)+' עבור '+g.players.find(x=>x.id===pid).name).join('. ');return prompt('יש תיקו על המצרך '+g.tieIngredient+'. '+options+'. הקישו את מספר השחקן שיזכה',{allowed:g.tieCandidates.map((_,i)=>String(i+1)).join('')});}
+      if(g.over){await saveGame(g);return prompt('המשחק הסתיים. המנצח '+g.players.find(x=>x.id===g.winner).name);}
       await saveGame(g);
       return prompt('המכרז הסתיים. '+(result.winnerId?'המצרך זכה על ידי '+g.players.find(x=>x.id===result.winnerId).name:'לא היה זוכה')+'. '+(g.phase==='bidding'?'המצרך הבא '+g.marketIngredients[g.ingredientIndex]+'.':'התור הבא')+'. הקישו אחת להמשך',{allowed:'1'});
      }
