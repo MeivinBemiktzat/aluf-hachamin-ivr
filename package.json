@@ -4,11 +4,13 @@
   "private": true,
   "description": "Aluf HaChamin multiplayer Yemot IVR game with Hugging Face Storage",
   "main": "api/ivr.js",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.800.0"
   },
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --check api/ivr.js && node --check api/game.js && node --check api/bot.js && node --test test/*.test.js"
   }
 }
