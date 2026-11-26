@@ -13,7 +13,7 @@ function newPlayer(id,name,isBot=false){
  return {id,name,isBot,recipe:null,ingredients:[],coins:[],friends:[],protections:0,nextBidBonus:0,nextBidDiscount:0,disconnectedAt:null,joinedAt:Date.now(),lastSeenLog:0};
 }
 function newGame(code,maxPlayers,mode){
- return {version:2,code,createdAt:Date.now(),mode,maxPlayers,started:false,over:false,players:[],turn:0,round:0,marketCard:null,marketIngredients:[],ingredientIndex:0,phase:'lobby',bids:{},bidOrder:[],tieCandidates:[],tieChoice:null,turnDeadline:0,log:[],winner:null,discard:{money:[],friends:[],market:[],ingredients:[]},deck:{market:[],friends:[],ingredients:[]},pendingEffects:[]};
+ return {version:2,code,createdAt:Date.now(),mode,maxPlayers,started:false,over:false,players:[],turn:0,round:0,marketCard:null,marketIngredients:[],ingredientIndex:0,phase:'lobby',bids:{},bidOrder:[],tieCandidates:[],tieChoice:null,turnDeadline:0,bidDeadline:0,log:[],winner:null,discard:{money:[],friends:[],market:[],ingredients:[]},deck:{market:[],friends:[],ingredients:[]},pendingEffects:[]};
 }
 function refillDeck(g,type){
  const source=type==='market'?data.marketCards:type==='friends'?data.friendCards:data.ingredients.map((name,i)=>({id:'ingredient_'+i,name}));
@@ -43,7 +43,7 @@ function startGame(g){
 }
 function beginTurn(g){
  g.phase='turn';g.marketCard=null;g.marketIngredients=[];g.ingredientIndex=0;g.bids={};g.bidOrder=[];g.tieCandidates=[];g.tieChoice=null;g.pendingEffects=[];
- g.turnDeadline=Date.now()+120000;
+ g.turnDeadline=Date.now()+120000;g.bidDeadline=0;
 }
 function currentPlayer(g){return g.players[g.turn];}
 function ingredientName(x){return typeof x==='string'?x:x.name;}
@@ -77,7 +77,7 @@ function applyMarketEffect(g,c){
 }
 function startAuction(g){
  g.bids={};g.bidOrder=g.players.filter(p=>!p.isBot).map(p=>p.id);
- g.tieCandidates=[];g.tieChoice=null;g.phase='bidding';
+ g.tieCandidates=[];g.tieChoice=null;g.bidDeadline=Date.now()+90000;g.phase='bidding';
 }
 function coinTotal(p){return p.coins.reduce((a,b)=>a+b,0);}
 function findPayment(cards,amount){
