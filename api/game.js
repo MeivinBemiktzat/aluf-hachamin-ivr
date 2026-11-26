@@ -147,6 +147,19 @@ function finishMarket(g){
  if(winner){g.over=true;g.phase='over';g.winner=winner.id;addLog(g,winner.name+' השלים את המתכון וניצח');return;}
  g.turn=(g.turn+1)%g.players.length;g.round++;beginTurn(g);
 }
+function buyFriend(g,playerId){
+ const p=g.players.find(x=>x.id===playerId);if(!p)throw Error('שחקן לא נמצא');
+ if(coinTotal(p)<3)throw Error('אין מספיק זוזים לרכישת קלף חבר\'ה');
+ let indices=findPayment(p.coins,3);
+ if(!indices){
+  const candidates=p.coins.map((v,i)=>({v,i})).filter(x=>x.v>3).sort((a,b)=>a.v-b.v);
+  if(candidates.length)indices=[candidates[0].i];
+ }
+ if(!indices)throw Error('אין צירוף קלפי כסף מתאים לתשלום של שלושה זוזים');
+ const used=new Set(indices);const paid=p.coins.filter((_,i)=>used.has(i));
+ p.coins=p.coins.filter((_,i)=>!used.has(i));g.discard.money.push(...paid);
+ return giveFriend(g,p);
+}
 function drawFriend(g,p){return giveFriend(g,p);}
 function activateFriend(g,playerId,cardIndex,targetId){
  const p=g.players.find(x=>x.id===playerId);
@@ -196,4 +209,4 @@ function sellIngredient(p,index,g,enhanced=false){
 function recipeProgress(p){return p.recipe?p.recipe.ingredients.filter(x=>p.ingredients.includes(x)).length:0;}
 function autoMoneyIfEmpty(g){for(const p of g.players)if(!p.coins.length)giveMoney(p,g.marketIngredients.length);}
 function nextTurn(g){if(g.over)return null;g.turn=(g.turn+1)%g.players.length;g.round++;beginTurn(g);return currentPlayer(g);}
-module.exports={data,newPlayer,newGame,startGame,beginTurn,openMarket,currentPlayer,coinTotal,submitSecretBid,revealAuction,resolveTie,activateFriend,drawFriend,sellIngredient,recipeProgress,addLog,moneyCard,giveMoney,findPayment,spendExact,nextTurn};
+module.exports={data,newPlayer,newGame,startGame,beginTurn,openMarket,currentPlayer,coinTotal,submitSecretBid,revealAuction,resolveTie,activateFriend,drawFriend,buyFriend,sellIngredient,recipeProgress,addLog,moneyCard,giveMoney,findPayment,spendExact,nextTurn};
