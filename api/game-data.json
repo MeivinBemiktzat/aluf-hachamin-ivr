@@ -1,35 +1,291 @@
 {
   "ingredients": [
-    "בשר", "תפוחי אדמה", "ביצים", "שעועית", "גריסים", "חיטה", "בצל",
-    "שום", "שמן", "מלח", "פלפל שחור", "פפריקה", "תבלין לחמין",
-    "קישקע", "בטטה", "גזר", "מים", "קטניות"
+    "בשר",
+    "תפוחי אדמה",
+    "ביצים",
+    "שעועית",
+    "גריסים",
+    "חיטה",
+    "בצל",
+    "שום",
+    "שמן",
+    "מלח",
+    "פלפל שחור",
+    "פפריקה",
+    "תבלין לחמין",
+    "קישקע",
+    "בטטה",
+    "גזר",
+    "מים",
+    "קטניות"
   ],
   "recipes": [
-    {"id":"classic","name":"חמין קלאסי","ingredients":["בשר","תפוחי אדמה","ביצים","שעועית","גריסים","בצל","תבלין לחמין"]},
-    {"id":"hearty","name":"חמין עשיר","ingredients":["בשר","תפוחי אדמה","ביצים","שעועית","חיטה","קישקע","בצל","תבלין לחמין"]},
-    {"id":"wheat","name":"חמין חיטה","ingredients":["בשר","תפוחי אדמה","ביצים","חיטה","בצל","שום","שמן"]},
-    {"id":"vegetarian","name":"חמין צמחוני","ingredients":["תפוחי אדמה","ביצים","שעועית","גריסים","בטטה","גזר","בצל","תבלין לחמין"]},
-    {"id":"spicy","name":"חמין מתובל","ingredients":["בשר","תפוחי אדמה","ביצים","שעועית","פלפל שחור","פפריקה","שום"]},
-    {"id":"family","name":"חמין משפחתי","ingredients":["בשר","תפוחי אדמה","ביצים","שעועית","גריסים","גזר","בצל","מים"]}
+    {
+      "id": "classic",
+      "name": "חמין קלאסי",
+      "ingredients": [
+        "בשר",
+        "תפוחי אדמה",
+        "ביצים",
+        "שעועית",
+        "גריסים",
+        "בצל",
+        "תבלין לחמין"
+      ]
+    },
+    {
+      "id": "hearty",
+      "name": "חמין עשיר",
+      "ingredients": [
+        "בשר",
+        "תפוחי אדמה",
+        "ביצים",
+        "שעועית",
+        "חיטה",
+        "קישקע",
+        "בצל",
+        "תבלין לחמין"
+      ]
+    },
+    {
+      "id": "wheat",
+      "name": "חמין חיטה",
+      "ingredients": [
+        "בשר",
+        "תפוחי אדמה",
+        "ביצים",
+        "חיטה",
+        "בצל",
+        "שום",
+        "שמן"
+      ]
+    },
+    {
+      "id": "vegetarian",
+      "name": "חמין צמחוני",
+      "ingredients": [
+        "תפוחי אדמה",
+        "ביצים",
+        "שעועית",
+        "גריסים",
+        "בטטה",
+        "גזר",
+        "בצל",
+        "תבלין לחמין"
+      ]
+    },
+    {
+      "id": "spicy",
+      "name": "חמין מתובל",
+      "ingredients": [
+        "בשר",
+        "תפוחי אדמה",
+        "ביצים",
+        "שעועית",
+        "פלפל שחור",
+        "פפריקה",
+        "שום"
+      ]
+    },
+    {
+      "id": "family",
+      "name": "חמין משפחתי",
+      "ingredients": [
+        "בשר",
+        "תפוחי אדמה",
+        "ביצים",
+        "שעועית",
+        "גריסים",
+        "גזר",
+        "בצל",
+        "מים"
+      ]
+    }
   ],
   "marketCards": [
-    {"id":"baker","name":"האופה","description":"כל השחקנים מקבלים קלף חבר'ה אחד מהקופה","effect":"draw_friend_all","ingredientCount":2},
-    {"id":"butcher","name":"הקצב","description":"פותחים שלושה מצרכים בשוק","effect":"none","ingredientCount":3},
-    {"id":"market_day","name":"יום שוק","description":"פותחים ארבעה מצרכים בשוק","effect":"none","ingredientCount":4},
-    {"id":"shortage","name":"מחסור בשוק","description":"פותחים מצרך אחד בלבד","effect":"none","ingredientCount":1},
-    {"id":"generous_vendor","name":"המוכר הנדיב","description":"כל שחקן מקבל קלף כסף אחד בשווי אקראי","effect":"money_all","ingredientCount":2},
-    {"id":"surprise","name":"הפתעה בשוק","description":"פותחים שלושה מצרכים","effect":"none","ingredientCount":3},
-    {"id":"cheap_day","name":"מבצע מיוחד","description":"כל שחקן מקבל זוז אחד לפני המכרז","effect":"coin_all","ingredientCount":2},
-    {"id":"busy_market","name":"שוק הומה","description":"פותחים שני מצרכים","effect":"none","ingredientCount":2}
+    {
+      "id": "baker",
+      "name": "האופה",
+      "description": "כל השחקנים מקבלים קלף חבר'ה אחד מהקופה",
+      "effect": "draw_friend_all",
+      "ingredientCount": 2
+    },
+    {
+      "id": "butcher",
+      "name": "הקצב",
+      "description": "פותחים שלושה מצרכים בשוק",
+      "effect": "none",
+      "ingredientCount": 3
+    },
+    {
+      "id": "market_day",
+      "name": "יום שוק",
+      "description": "פותחים ארבעה מצרכים בשוק",
+      "effect": "none",
+      "ingredientCount": 4
+    },
+    {
+      "id": "shortage",
+      "name": "מחסור בשוק",
+      "description": "פותחים מצרך אחד בלבד",
+      "effect": "none",
+      "ingredientCount": 1
+    },
+    {
+      "id": "generous_vendor",
+      "name": "המוכר הנדיב",
+      "description": "כל שחקן מקבל קלף כסף אחד בשווי אקראי",
+      "effect": "money_all",
+      "ingredientCount": 2
+    },
+    {
+      "id": "surprise",
+      "name": "הפתעה בשוק",
+      "description": "פותחים שלושה מצרכים",
+      "effect": "none",
+      "ingredientCount": 3
+    },
+    {
+      "id": "cheap_day",
+      "name": "מבצע מיוחד",
+      "description": "כל שחקן מקבל זוז אחד לפני המכרז",
+      "effect": "coin_all",
+      "ingredientCount": 2
+    },
+    {
+      "id": "busy_market",
+      "name": "שוק הומה",
+      "description": "פותחים שני מצרכים",
+      "effect": "none",
+      "ingredientCount": 2
+    },
+    {
+      "id": "bakery_day",
+      "name": "יום האפייה",
+      "description": "כל שחקן מקבל קלף חבר'ה אחד",
+      "effect": "draw_friend_all",
+      "ingredientCount": 3
+    },
+    {
+      "id": "family_gift",
+      "name": "מתנה מהמשפחה",
+      "description": "כל שחקן מקבל שני קלפי כסף אקראיים",
+      "effect": "double_money_all",
+      "ingredientCount": 2
+    },
+    {
+      "id": "thieves",
+      "name": "שוק של גנבים",
+      "description": "השחקן הפעיל לוקח קלף כסף אקראי משחקן אחר",
+      "effect": "steal_one_coin",
+      "ingredientCount": 2
+    },
+    {
+      "id": "big_market",
+      "name": "השוק הגדול",
+      "description": "פותחים חמישה מצרכים למכרז",
+      "effect": "none",
+      "ingredientCount": 5
+    }
   ],
   "friendCards": [
-    {"id":"grandma","name":"סבתא","description":"קבלו שני זוזים מהקופה","effect":"coins","value":2},
-    {"id":"baker_friend","name":"האופה","description":"קבלו קלף חבר'ה נוסף מהקופה","effect":"draw"},
-    {"id":"scout","name":"המרגל","description":"הציצו במצרך הבא לפני פתיחתו","effect":"peek"},
-    {"id":"bargain","name":"הסוחר","description":"הפחיתו זוז אחד מההצעה שלכם במכרז הנוכחי, בלי לפגוע בסכום שתקבלו אם תזכו","effect":"discount","value":1},
-    {"id":"chef","name":"השף","description":"הוסיפו זוז אחד להצעה שלכם במכרז הנוכחי","effect":"boost","value":1},
-    {"id":"helper","name":"העוזר","description":"קבלו זוז אחד","effect":"coins","value":1},
-    {"id":"blocker","name":"השומר","description":"בטלו קלף חבר'ה שמופעל נגדכם","effect":"protect"},
-    {"id":"swap","name":"החלפן","description":"החליפו קלף חבר'ה אחד אקראי עם הקופה","effect":"replace"}
+    {
+      "id": "grandma",
+      "name": "סבתא",
+      "description": "קבלו שני זוזים מהקופה",
+      "effect": "coins",
+      "value": 2
+    },
+    {
+      "id": "baker_friend",
+      "name": "האופה",
+      "description": "קבלו קלף חבר'ה נוסף",
+      "effect": "draw",
+      "value": 0
+    },
+    {
+      "id": "scout",
+      "name": "המרגל",
+      "description": "הציצו במצרך הבא",
+      "effect": "peek",
+      "value": 0
+    },
+    {
+      "id": "bargain",
+      "name": "הסוחר",
+      "description": "הפחיתו זוז אחד מההצעה שלכם",
+      "effect": "discount",
+      "value": 1
+    },
+    {
+      "id": "chef",
+      "name": "השף",
+      "description": "הוסיפו זוז אחד להצעה שלכם",
+      "effect": "boost",
+      "value": 1
+    },
+    {
+      "id": "helper",
+      "name": "העוזר",
+      "description": "קבלו זוז אחד",
+      "effect": "coins",
+      "value": 1
+    },
+    {
+      "id": "blocker",
+      "name": "השומר",
+      "description": "קבלו הגנה מפני קלף חבר'ה",
+      "effect": "protect",
+      "value": 0
+    },
+    {
+      "id": "swap",
+      "name": "החלפן",
+      "description": "החליפו קלף חבר'ה אחד בקלף מהקופה",
+      "effect": "replace",
+      "value": 0
+    },
+    {
+      "id": "beggar",
+      "name": "הקבצן",
+      "description": "במכרז הנוכחי ההצעה הנמוכה ביותר זוכה",
+      "effect": "lowest_wins",
+      "value": 0
+    },
+    {
+      "id": "grandpa",
+      "name": "הזיידי",
+      "description": "קחו קלף חבר'ה מערימת המשומשים",
+      "effect": "retrieve",
+      "value": 0
+    },
+    {
+      "id": "baby",
+      "name": "הבבי",
+      "description": "קבלו מצרך נוסף, כל עוד לא אספתם שישה",
+      "effect": "extra_ingredient",
+      "value": 0
+    },
+    {
+      "id": "uncle",
+      "name": "הדוד",
+      "description": "קבלו שני קלפי כסף אקראיים",
+      "effect": "take_two_money",
+      "value": 0
+    },
+    {
+      "id": "prophet",
+      "name": "הנביא",
+      "description": "בטלו את הצעתכם והחזירו את קלפי הכסף ליד",
+      "effect": "take_back_bid",
+      "value": 0
+    },
+    {
+      "id": "spy",
+      "name": "המרגל הוותיק",
+      "description": "בטלו את השפעת קלף החבר'ה האחרון",
+      "effect": "cancel_last",
+      "value": 0
+    }
   ]
 }
